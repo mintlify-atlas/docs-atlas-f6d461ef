@@ -1,0 +1,379 @@
+---
+title: "Weapons reference"
+description: "Complete reference for the Weapon, WeaponDamage, and all weapon stat structs in GCS, covering both melee and ranged weapons."
+---
+
+Weapons in GCS are not top-level entities — they are always attached to a parent: a [Trait](/reference/traits-and-modifiers), a [Skill](/reference/skills-and-spells-ref), or a piece of [Equipment](/reference/equipment-ref). The `WeaponData` struct stores all persistent fields; the `Weapon` struct adds the runtime `Owner` reference.
+
+---
+
+## WeaponData fields
+
+<ResponseField name="id" type="tid.TID" required>
+  Unique identifier. The first byte encodes whether this is a melee weapon (`kinds.WeaponMelee`) or a ranged weapon (`kinds.WeaponRanged`). Use `Weapon.IsMelee()` / `Weapon.IsRanged()` to test.
+</ResponseField>
+
+<ResponseField name="sv" type="int">
+  Sub-version for internal migration of weapon data format.
+</ResponseField>
+
+<ResponseField name="damage" type="WeaponDamage" required>
+  Damage expression for this weapon. See [WeaponDamage](#weapondamage).
+</ResponseField>
+
+<ResponseField name="strength" type="WeaponStrength">
+  Minimum ST requirement and usage flags. See [WeaponStrength](#weaponstrength).
+</ResponseField>
+
+<ResponseField name="usage" type="string">
+  Short label describing how the weapon is used (e.g. `"Swing"`, `"Thrust"`, `"Thrown"`).
+</ResponseField>
+
+<ResponseField name="usage_notes" type="string">
+  Additional usage notes shown in the weapon table.
+</ResponseField>
+
+<ResponseField name="defaults" type="[]*SkillDefault">
+  Skills that can be used to attack with this weapon. See [SkillDefault](/reference/skills-and-spells-ref#skilldefault).
+</ResponseField>
+
+<ResponseField name="hide" type="bool">
+  When `true`, this weapon row is hidden from the sheet weapon tables.
+</ResponseField>
+
+### Melee-only fields
+
+<ResponseField name="reach" type="WeaponReach">
+  Distance in yards at which the weapon can strike. See [WeaponReach](#weaponreach).
+</ResponseField>
+
+<ResponseField name="parry" type="WeaponParry">
+  Parry capability and modifier. See [WeaponParry](#weaponparry).
+</ResponseField>
+
+<ResponseField name="block" type="WeaponBlock">
+  Block capability and modifier. See [WeaponBlock](#weaponblock).
+</ResponseField>
+
+### Ranged-only fields
+
+<ResponseField name="accuracy" type="WeaponAccuracy">
+  Accuracy bonus when aiming. See [WeaponAccuracy](#weaponaccuracy).
+</ResponseField>
+
+<ResponseField name="range" type="WeaponRange">
+  Half-damage and maximum range. See [WeaponRange](#weaponrange).
+</ResponseField>
+
+<ResponseField name="rate_of_fire" type="WeaponRoF">
+  Rate of fire in shots per turn. See [WeaponRoF](#weaponrof).
+</ResponseField>
+
+<ResponseField name="shots" type="WeaponShots">
+  Ammunition capacity and reload data. See [WeaponShots](#weaponshots).
+</ResponseField>
+
+<ResponseField name="bulk" type="WeaponBulk">
+  Bulk penalty when firing while moving or using the weapon in close quarters.
+</ResponseField>
+
+<ResponseField name="recoil" type="WeaponRecoil">
+  Recoil value for sustained fire.
+</ResponseField>
+
+---
+
+## WeaponDamage
+
+`WeaponDamage` describes the dice expression and damage type used when the weapon hits.
+
+<ResponseField name="type" type="string" required>
+  Damage type string (e.g. `"cr"` crushing, `"cut"` cutting, `"imp"` impaling, `"pi"` piercing, `"burn"` burning, `"tox"` toxic, `"fat"` fatigue, `"cor"` corrosive, `"spec"` special).
+</ResponseField>
+
+<ResponseField name="st" type="stdmg.Option">
+  How Strength contributes to damage.
+
+  | Value | Description |
+  |-------|-------------|
+  | `"none"` | ST is not used; damage is the `base` expression only |
+  | `"thr"` | Adds swing damage |
+  | `"sw"` | Adds thrust damage |
+  | `"thr_lev_st"` | Adds thrust damage scaled by levelled ST |
+  | `"sw_lev_st"` | Adds swing damage scaled by levelled ST |
+</ResponseField>
+
+<ResponseField name="leveled" type="bool">
+  When `true`, the base damage scales with the owning item's level.
+</ResponseField>
+
+<ResponseField name="st_mul" type="fxp.Int">
+  Multiplier applied to the ST-derived component. Defaults to `1` (stored as `fxp.One`); suppressed in JSON when equal to `1`.
+</ResponseField>
+
+<ResponseField name="base" type="string">
+  Additional dice expression added on top of the ST component (e.g. `"1d"`, `"2d+1"`, `"0"`).
+</ResponseField>
+
+<ResponseField name="base_leveled" type="string">
+  Per-level bonus dice expression used when `leveled` is `true`.
+</ResponseField>
+
+<ResponseField name="armor_divisor" type="fxp.Int">
+  Armor divisor value. `1` means no divisor (normal). `2` means the target's DR is halved. `0.5` means DR is doubled.
+</ResponseField>
+
+<ResponseField name="fragmentation" type="string">
+  Fragmentation damage dice (e.g. `"2d"` for fragmentation grenades).
+</ResponseField>
+
+<ResponseField name="fragmentation_armor_divisor" type="fxp.Int">
+  Armor divisor for fragmentation damage.
+</ResponseField>
+
+<ResponseField name="fragmentation_type" type="string">
+  Damage type for the fragmentation component (e.g. `"cut"`).
+</ResponseField>
+
+<ResponseField name="modifier_per_die" type="fxp.Int">
+  Flat modifier added per damage die rolled (e.g. `1` → 1d6+1 per die).
+</ResponseField>
+
+---
+
+## WeaponStrength
+
+<ResponseField name="Min" type="fxp.Int">
+  Minimum ST required to use this weapon without penalty.
+</ResponseField>
+
+<ResponseField name="Bipod" type="bool">
+  Weapon requires a bipod (`B` suffix in GURPS notation). When deployed, the ST requirement drops.
+</ResponseField>
+
+<ResponseField name="Mounted" type="bool">
+  Weapon must be mounted (`M` suffix).
+</ResponseField>
+
+<ResponseField name="MusketRest" type="bool">
+  Weapon requires a musket rest (`R` suffix).
+</ResponseField>
+
+<ResponseField name="TwoHanded" type="bool">
+  Requires two hands (`†` suffix). Effectively doubles the ST requirement for one-handed use.
+</ResponseField>
+
+<ResponseField name="TwoHandedUnready" type="bool">
+  Requires two hands and leaves the weapon unready after each use (`‡` suffix).
+</ResponseField>
+
+---
+
+## WeaponReach
+
+<ResponseField name="Min" type="fxp.Int">
+  Minimum reach in yards (usually 1 for most hand weapons, `C` for close-combat weapons).
+</ResponseField>
+
+<ResponseField name="Max" type="fxp.Int">
+  Maximum reach in yards. When greater than `Min`, the weapon can strike at any range between Min and Max.
+</ResponseField>
+
+<ResponseField name="CloseCombat" type="bool">
+  `true` when the weapon has a `C` reach component, meaning it can be used in close combat (grappling range).
+</ResponseField>
+
+<ResponseField name="ChangeRequiresReady" type="bool">
+  Switching between reach values requires a Ready maneuver (`*` suffix in GURPS notation).
+</ResponseField>
+
+---
+
+## WeaponParry
+
+<ResponseField name="CanParry" type="bool">
+  `false` when the weapon cannot parry at all (displayed as `"No"` or `"—"` on the sheet).
+</ResponseField>
+
+<ResponseField name="Modifier" type="fxp.Int">
+  Modifier added to the base Parry score derived from skill level (typically Skill/2 + 3).
+</ResponseField>
+
+<ResponseField name="Fencing" type="bool">
+  Fencing weapon (`F` suffix): can retreat and parry without penalty; may parry flails.
+</ResponseField>
+
+<ResponseField name="Unbalanced" type="bool">
+  Unbalanced weapon (`U` suffix): cannot parry after attacking in the same turn.
+</ResponseField>
+
+---
+
+## WeaponBlock
+
+<ResponseField name="CanBlock" type="bool">
+  `false` when the weapon cannot block (displayed as `"No"` on the sheet).
+</ResponseField>
+
+<ResponseField name="Modifier" type="fxp.Int">
+  Modifier added to the base Block score derived from skill level (typically Skill/2 + 3).
+</ResponseField>
+
+---
+
+## WeaponAccuracy
+
+<ResponseField name="Base" type="fxp.Int">
+  Intrinsic accuracy bonus granted when taking an Aim maneuver.
+</ResponseField>
+
+<ResponseField name="Scope" type="fxp.Int">
+  Additional accuracy from an attached scope (added to `Base` when the scope is used).
+</ResponseField>
+
+<ResponseField name="Jet" type="bool">
+  When `true`, this is a jet weapon (flamethrower, etc.) with special accuracy rules.
+</ResponseField>
+
+---
+
+## WeaponRange
+
+<ResponseField name="HalfDamage" type="fxp.Int">
+  Range in yards at which damage drops to half.
+</ResponseField>
+
+<ResponseField name="Min" type="fxp.Int">
+  Minimum range (rarely used; applies to weapons with a dead zone).
+</ResponseField>
+
+<ResponseField name="Max" type="fxp.Int">
+  Maximum range in yards.
+</ResponseField>
+
+<ResponseField name="MusclePowered" type="bool">
+  When `true`, the range is multiplied by the user's ST (`×ST` notation).
+</ResponseField>
+
+<ResponseField name="InMiles" type="bool">
+  When `true`, the range values are in miles rather than yards.
+</ResponseField>
+
+---
+
+## WeaponRoF
+
+`WeaponRoF` represents the rate-of-fire composite, which may have two firing modes (e.g. semi-auto and full-auto).
+
+<ResponseField name="Mode1" type="WeaponRoFMode">
+  Primary firing mode.
+</ResponseField>
+
+<ResponseField name="Mode2" type="WeaponRoFMode">
+  Secondary firing mode (e.g. full-auto on a weapon with a semi/full selector).
+</ResponseField>
+
+<ResponseField name="Jet" type="bool">
+  When `true`, this is a jet weapon using special RoF rules.
+</ResponseField>
+
+### WeaponRoFMode
+
+<ResponseField name="ShotsPerAttack" type="fxp.Int">
+  Number of projectiles fired per attack in this mode.
+</ResponseField>
+
+<ResponseField name="SecondaryProjectiles" type="fxp.Int">
+  Secondary projectiles per shot (e.g. pellets in a shotgun shell).
+</ResponseField>
+
+<ResponseField name="FullAutoOnly" type="bool">
+  This mode can only fire in full-auto (`!` suffix).
+</ResponseField>
+
+<ResponseField name="HighCyclicControlledBursts" type="bool">
+  High-cyclic controlled-burst fire allowed (`#` suffix).
+</ResponseField>
+
+---
+
+## WeaponShots
+
+<ResponseField name="Count" type="fxp.Int">
+  Number of shots in the magazine or cylinder before reloading.
+</ResponseField>
+
+<ResponseField name="InChamber" type="fxp.Int">
+  Additional shots already chambered (e.g. `+1` for a round in the chamber).
+</ResponseField>
+
+<ResponseField name="Duration" type="fxp.Int">
+  For beam weapons: the number of seconds of continuous fire per charge.
+</ResponseField>
+
+<ResponseField name="ReloadTime" type="fxp.Int">
+  Time in seconds to reload (`i` suffix indicates individual-round loading).
+</ResponseField>
+
+<ResponseField name="ReloadTimeIsPerShot" type="bool">
+  When `true`, `ReloadTime` is the time to load a single cartridge rather than a full magazine.
+</ResponseField>
+
+<ResponseField name="Thrown" type="bool">
+  When `true`, the weapon is thrown and must be retrieved; `T` suffix in GURPS notation.
+</ResponseField>
+
+---
+
+## Melee vs. ranged distinction
+
+The weapon kind is encoded in the TID's first byte:
+
+```go
+func (w *Weapon) IsMelee() bool  { return tid.IsKind(w.TID, kinds.WeaponMelee) }
+func (w *Weapon) IsRanged() bool { return tid.IsKind(w.TID, kinds.WeaponRanged) }
+```
+
+Melee weapons use `Reach`, `Parry`, and `Block`. Ranged weapons use `Accuracy`, `Range`, `RateOfFire`, `Shots`, `Bulk`, and `Recoil`. The distinction is structural: a ranged weapon's melee fields are zero-valued and vice versa.
+
+---
+
+## JSON example
+
+### Melee weapon
+
+```json
+{
+  "id": "WMts000AbCdEfGhI",
+  "damage": { "type": "cut", "st": "sw", "st_mul": 1 },
+  "strength": { "min": 10 },
+  "usage": "Swing",
+  "reach": { "min": 1, "max": 1 },
+  "parry": { "can_parry": true, "modifier": 0 },
+  "block": { "can_block": false },
+  "defaults": [
+    { "type": "skill", "name": "Broadsword" },
+    { "type": "dx", "modifier": -5 }
+  ]
+}
+```
+
+### Ranged weapon
+
+```json
+{
+  "id": "WRts000AbCdEfGhI",
+  "damage": { "type": "pi", "base": "3d+2" },
+  "strength": { "min": 10, "two_handed": true },
+  "usage": "Shoot",
+  "accuracy": { "base": 5 },
+  "range": { "half_damage": 500, "max": 700 },
+  "rate_of_fire": { "mode1": { "shots_per_attack": 3 } },
+  "shots": { "count": 30, "reload_time": 3 },
+  "bulk": { "modifier": -4 },
+  "recoil": { "recoil": 2 },
+  "defaults": [
+    { "type": "skill", "name": "Guns", "specialization": "Rifle" }
+  ]
+}
+```

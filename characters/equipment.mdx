@@ -1,0 +1,122 @@
+---
+title: "Equipment"
+description: "Manage carried gear, containers, encumbrance, and stored loot. Understand how weight and value are calculated and how encumbrance affects your character."
+---
+
+The **Equipment** panel tracks everything a character owns. GCS separates equipment into two lists: **carried equipment** (gear on the character's person that contributes to encumbrance) and **other equipment** (gear that is stashed, stored, or otherwise not being carried).
+
+## Equipment columns
+
+| Column | Description |
+|---|---|
+| **Equipped** | Checkbox — whether the item is actively equipped (worn/held) vs. just carried |
+| **Quantity** | How many of this item the character has |
+| **Description** | Item name, tech level, notes, and modifier summary |
+| **TL** | Tech level of the item |
+| **LC** | Legality class |
+| **Cost** | Unit cost |
+| **Extended cost** | Unit cost × quantity (plus contents for containers) |
+| **Weight** | Unit weight |
+| **Extended weight** | Unit weight × quantity (plus contents for containers) |
+| **Tags** | Comma-separated tags |
+| **Reference** | Book and page reference |
+| **Library Source** | Library link and sync state |
+
+## Tech level and legality class
+
+Every piece of equipment can have a **tech level** (`TL`) string indicating what era of technology it belongs to (e.g. `4` for the age of black powder, `8` for the modern day). TL is informational and used for campaign consistency checks.
+
+**Legality class** (`LC`) is a single digit from 0 to 4 that describes how restricted an item is in the game world:
+
+| LC | Meaning |
+|---|---|
+| 0 | Banned — only available to authorized military or government |
+| 1 | Military — restricted to licensed military or law enforcement |
+| 2 | Restricted — requires a license to own |
+| 3 | Licensed — legal with a permit |
+| 4 | Open — no restrictions (default for new items) |
+
+## Equipment modifiers
+
+Like trait modifiers, **equipment modifiers** adjust an item's cost, weight, or both. Each modifier has:
+
+- A name and description
+- A cost adjustment (flat value, percentage of base, or multiplier)
+- A weight adjustment (same options)
+- An enabled/disabled toggle
+
+Modifiers are attached to a specific equipment item and are listed in its detail editor. For example, a *Fine* quality modifier might add +30% to the base cost and reduce weight slightly.
+
+## Equipment containers
+
+Right-click in the equipment panel and choose **New Equipment Container** to create a collapsible group. Containers can represent bags, quivers, pouches, vehicles, or any logical grouping. Their extended cost and weight columns show totals for all contained items.
+
+<Note>
+  Only containers in the **carried equipment** list contribute to encumbrance. Items in **other equipment** are never counted toward encumbrance.
+</Note>
+
+## Encumbrance
+
+Encumbrance measures how heavily loaded a character is relative to their **Basic Lift** — the weight they can pick up with one hand in one second. Basic Lift is derived from the character's ST score.
+
+GCS calculates the total weight of all carried equipment (including the contents of containers) and compares it to multiples of Basic Lift to determine the encumbrance level:
+
+| Level | Max weight | Move penalty | Dodge penalty |
+|---|---|---|---|
+| **None (0)** | 1× Basic Lift | ×1 | −0 |
+| **Light (1)** | 2× Basic Lift | ×0.8 | −1 |
+| **Medium (2)** | 3× Basic Lift | ×0.6 | −2 |
+| **Heavy (3)** | 6× Basic Lift | ×0.4 | −3 |
+| **X-Heavy (4)** | 10× Basic Lift | ×0.2 | −4 |
+
+The current encumbrance level is highlighted on the sheet. Move and Dodge values in the secondary characteristics panel update automatically to reflect the penalty.
+
+<Tip>
+  Some skills have an encumbrance penalty multiplier — they suffer a larger penalty than the standard −1 per level. Check the skill's detail editor if you notice a skill penalized more than expected.
+</Tip>
+
+### Ignoring weight for skills
+
+Individual equipment items can be flagged with **Ignore weight for skills** (`WeightIgnoredForSkills`). When this flag is set, the item's weight is excluded from encumbrance when calculating skill penalties, even though it still counts toward the character's basic encumbrance level for movement and dodge.
+
+## Other equipment (loot)
+
+The **other equipment** list holds items the character owns but is not carrying — gear in a base camp, items stored in a vehicle, or loot not yet divided up. These items are included in the character's total wealth but do not affect encumbrance or active-equipment features (such as equipped-equipment prerequisites).
+
+<Note>
+  When you drag an item between the carried and other equipment lists, GCS recalculates encumbrance immediately.
+</Note>
+
+## Adding equipment from a library
+
+<Steps>
+  <Step title="Open a library panel">
+    Click the library icon in the sidebar or choose **View → Library Explorer** to open the library browser.
+  </Step>
+  <Step title="Find the item">
+    Navigate to the equipment section of a loaded library and use the search box to filter by name, tag, or tech level.
+  </Step>
+  <Step title="Add to the character">
+    Drag the item onto either the **carried equipment** or **other equipment** panel, or double-click to add it to carried equipment by default. GCS creates a linked copy with the item's weight and cost pre-filled.
+  </Step>
+  <Step title="Set quantity and equipped state">
+    Click the **Quantity** cell to change how many of the item the character has. Toggle the **Equipped** checkbox to indicate whether the character is actively wearing or holding the item.
+  </Step>
+</Steps>
+
+## Related pages
+
+<CardGroup cols={2}>
+  <Card title="Character overview" icon="user" href="/characters/overview">
+    How equipment fits into the character data model
+  </Card>
+  <Card title="Traits" icon="list-check" href="/characters/traits">
+    Equipped-equipment prerequisites and how equipment interacts with trait rules
+  </Card>
+  <Card title="Libraries overview" icon="books" href="/libraries/overview">
+    Manage and load equipment libraries
+  </Card>
+  <Card title="Sheet settings" icon="sliders" href="/customization/settings">
+    Configure which equipment columns are visible and default display options
+  </Card>
+</CardGroup>

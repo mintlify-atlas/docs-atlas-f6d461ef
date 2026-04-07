@@ -1,0 +1,169 @@
+---
+title: "Skills and spells"
+description: "Understand how skill levels are calculated from attribute and difficulty, how techniques and defaults work, and how the spell college system maps to skills."
+---
+
+Skills and spells are tracked in their own panels on the character sheet. Both are point-based: you invest character points and GCS calculates the resulting skill level.
+
+## Skills
+
+A **skill** represents a specific area of training or knowledge. Each skill is defined by:
+
+- A **governing attribute** (ST, DX, IQ, HT, or a secondary characteristic)
+- A **difficulty level** (Easy, Average, Hard, or Very Hard)
+- The number of **character points** invested
+
+### Skill level calculation
+
+GCS computes a skill's level as:
+
+```
+Skill level = Attribute + Relative level
+```
+
+The relative level is determined by the point investment and difficulty. The mapping for a standard skill is:
+
+| Points invested | Easy | Average | Hard | Very Hard |
+|---|---|---|---|---|
+| 1 | +0 | −1 | −2 | −3 |
+| 2 | +1 | +0 | −1 | −2 |
+| 4 | +2 | +1 | +0 | −1 |
+| 8 | +3 | +2 | +1 | +0 |
+| 12 | +4 | +3 | +2 | +1 |
+| 16+ (+4/level) | +5… | +4… | +3… | +2… |
+
+For example, a character with DX 12 investing 4 points in *Bow* (DX/Hard) has a skill level of 12 + 0 = 12.
+
+### Skill columns
+
+| Column | Description |
+|---|---|
+| **Description** | Skill name, specialization, and notes |
+| **Difficulty** | Governing attribute and difficulty (e.g. `DX/A` for DX/Average) |
+| **Tags** | Comma-separated tags |
+| **Reference** | Book and page reference |
+| **Level** | Calculated absolute skill level |
+| **Relative level** | Level relative to the governing attribute (e.g. `+1`) |
+| **Points** | Points invested |
+| **Library Source** | Library link and sync state |
+
+### Techniques
+
+A **technique** is a specialized application of an existing skill — for example, *Targeted Attack (Sword/Neck)* based on the *Broadsword* skill. Techniques differ from regular skills:
+
+- They default to a parent skill (set via `TechniqueDefault`), not directly to an attribute.
+- They can have a **limit modifier** (`TechniqueLimitModifier`) that caps how far the technique can exceed the default.
+- They cost 1 point per +1 (Average difficulty) or 2 points per +1 (Hard difficulty) above the default.
+
+To add a technique, right-click in the skills panel and choose **New Technique**. Set the parent skill in the **Default** field of the detail editor.
+
+### Skill defaults
+
+A skill can be attempted even without investment, using a **default**. A default is an alternative starting level expressed as:
+
+- An attribute with a modifier (e.g. `IQ−5`)
+- Another skill with a modifier (e.g. `Broadsword−4`)
+
+GCS evaluates all defaults defined on a skill and uses the highest result. If a character has `DefaultedFrom` populated, the sheet shows which default is currently active.
+
+<Note>
+  A skill always uses whichever source — invested points or the best default — produces the higher level. GCS selects this automatically.
+</Note>
+
+### Encumbrance penalty
+
+Some physical skills have an `EncumbrancePenaltyMultiplier` that scales the encumbrance penalty. For example, a skill with a multiplier of 2 suffers twice the normal encumbrance penalty at a given encumbrance level.
+
+## Spells
+
+Spells work like skills — each spell has a governing attribute (almost always IQ), a difficulty (usually Hard), and a point investment — but they have additional fields specific to the GURPS magic system.
+
+### Spell-specific fields
+
+```go
+type SpellNonContainerOnlySyncData struct {
+    Difficulty      AttributeDifficulty // e.g. IQ/Hard
+    College         CollegeList         // one or more colleges (e.g. "Fire", "Illusion")
+    PowerSource     string              // e.g. "Arcane"
+    Class           string              // spell class (e.g. "Regular", "Area", "Missile")
+    Resist          string              // resistance roll, if any
+    CastingCost     string              // FP cost to cast
+    MaintenanceCost string              // FP cost per interval to maintain
+    CastingTime     string              // how long to cast (e.g. "1 second")
+    Duration        string              // how long the spell lasts
+    PrereqCount     int                 // minimum spells needed from same college
+    Prereq          *PrereqList         // other prerequisites
+}
+```
+
+### Spell columns
+
+| Column | Description |
+|---|---|
+| **Description** | Spell name and notes |
+| **Resist** | Target's resistance roll |
+| **Class** | Spell class (Regular, Area, etc.) |
+| **College** | Spell college(s) |
+| **Casting cost** | FP or ER to cast |
+| **Maintain cost** | FP to maintain per interval |
+| **Cast time** | Time to cast |
+| **Duration** | Duration of effect |
+| **Difficulty** | Governing attribute/difficulty |
+| **Prereq count** | Minimum college spells required |
+| **Level / Relative level / Points** | Same meaning as for skills |
+
+### Ritual magic spells
+
+GCS also supports **Ritual Magic** spells. A ritual magic spell derives its base level from a named ritual magic skill rather than directly from IQ. Set `RitualSkillName` in the spell detail editor to link a spell to its ritual skill.
+
+### Spell prerequisites
+
+Spells use the same prerequisite system as traits. The `PrereqCount` field is a shorthand for the most common GURPS magic prerequisite: the character must know at least *N* spells from the same college. For anything more complex (prerequisites from other colleges, specific named spells), use a full prerequisite list.
+
+### Adding skills and spells from a library
+
+<Steps>
+  <Step title="Open a library">
+    In the left sidebar, expand a library that contains skills or spells (e.g. the bundled GURPS Basic Set library).
+  </Step>
+  <Step title="Search or browse">
+    Use the search bar at the top of the library panel to filter by name. You can also browse by tag or category.
+  </Step>
+  <Step title="Add to the character">
+    Drag the skill or spell onto the corresponding panel on the character sheet, or double-click it. GCS creates a linked copy and calculates the level immediately.
+  </Step>
+</Steps>
+
+## Study hours
+
+Both skills and spells support **study tracking** — useful when using optional rules for earning points through in-game study rather than awarding them directly.
+
+Each study session is recorded with a type and a raw hour count. GCS multiplies raw hours by the study type's effectiveness multiplier to produce effective hours:
+
+| Study type | Multiplier |
+|---|---|
+| Self-study | ×0.5 |
+| On-the-job | ×0.25 |
+| Instruction (teacher) | ×1 |
+| Intensive instruction | ×2 |
+
+The standard threshold to earn 1 character point is **200 effective hours**. Having a relevant Talent reduces the threshold: level 1 → 180 hours, level 2 → 160 hours, level 3 → 140 hours, level 4 → 120 hours.
+
+When a skill has study hours logged, GCS shows progress inline on the sheet (e.g. *Studied 45 of 200 hours*).
+
+## Related pages
+
+<CardGroup cols={2}>
+  <Card title="Character overview" icon="user" href="/characters/overview">
+    How skills and spells fit into the character data model and point breakdown
+  </Card>
+  <Card title="Traits" icon="list-check" href="/characters/traits">
+    Prerequisites, study, and other mechanisms shared with traits
+  </Card>
+  <Card title="Libraries overview" icon="books" href="/libraries/overview">
+    Browse skill and spell libraries
+  </Card>
+  <Card title="Scripting" icon="code" href="/customization/scripting">
+    Write custom prerequisites using JavaScript
+  </Card>
+</CardGroup>

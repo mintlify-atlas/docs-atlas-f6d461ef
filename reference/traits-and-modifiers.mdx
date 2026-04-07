@@ -1,0 +1,285 @@
+---
+title: "Traits and modifiers reference"
+description: "Complete reference for the Trait and TraitModifier data models, including container types, cost types, self-control rolls, and point calculations."
+---
+
+A **trait** represents any advantage, disadvantage, quirk, perk, or cultural template applied to a character. Traits are stored in the `traits` array of an [entity](/reference/entity) and can be nested inside trait containers.
+
+---
+
+## TraitData fields
+
+`TraitData` is the serialisable subset of `Trait`. It composes several embedded structs documented below.
+
+### Identity and source
+
+<ResponseField name="id" type="tid.TID" required>
+  Unique identifier. The first byte encodes whether this is a plain trait (`kinds.Trait`) or a container (`kinds.TraitContainer`).
+</ResponseField>
+
+<ResponseField name="third_party" type="map[string]any">
+  Arbitrary data reserved for VTT integrations and external tools. Ignored by GCS.
+</ResponseField>
+
+<ResponseField name="children" type="[]*Trait">
+  Child traits. Only populated when `Container()` returns `true` (i.e. the TID kind is `TraitContainer`).
+</ResponseField>
+
+### Common fields (TraitSyncData)
+
+<ResponseField name="name" type="string">
+  Display name of the trait (e.g. `"Ambidexterity"`, `"Bad Temper"`).
+</ResponseField>
+
+<ResponseField name="reference" type="string">
+  Book and page reference (e.g. `"B39"`, `"MA55"`). Rendered as a clickable link in the sheet.
+</ResponseField>
+
+<ResponseField name="local_notes" type="string">
+  Notes that appear on the character sheet beneath the trait name.
+</ResponseField>
+
+<ResponseField name="tags" type="[]string">
+  Category tags for filtering and grouping (e.g. `["Mental"]`, `["Physical", "Exotic"]`).
+</ResponseField>
+
+<ResponseField name="prereqs" type="*PrereqList">
+  Tree of prerequisite conditions that must be satisfied before this trait counts as satisfied.
+</ResponseField>
+
+<ResponseField name="cr_adj" type="selfctrl.Adjustment">
+  Adjustment applied to the self-control roll result. See [CR adjustment values](#self-control-roll-cr).
+</ResponseField>
+
+### Edit-only fields (TraitEditData)
+
+<ResponseField name="vtt_notes" type="string">
+  Notes passed to VTT systems. Not displayed on the printed sheet.
+</ResponseField>
+
+<ResponseField name="userdesc" type="string">
+  Free-form description editable by the player, intended to capture specific details of an advantage or disadvantage.
+</ResponseField>
+
+<ResponseField name="replacements" type="map[string]string">
+  Name-substitution map used when a trait is instantiated from a template.
+</ResponseField>
+
+<ResponseField name="modifiers" type="[]*TraitModifier">
+  List of modifiers applied to this trait. See [TraitModifier fields](#traitmodifier-fields) below.
+</ResponseField>
+
+<ResponseField name="cr" type="selfctrl.Roll">
+  Self-control roll number. A value of `0` means no self-control roll is required. See [Self-control roll (CR)](#self-control-roll-cr).
+</ResponseField>
+
+<ResponseField name="frequency" type="frequency.Roll">
+  How often the trait triggers (used for some disadvantages).
+</ResponseField>
+
+<ResponseField name="disabled" type="bool">
+  When `true` the trait is excluded from point totals and feature calculations but remains visible on the sheet.
+</ResponseField>
+
+### Non-container fields (TraitNonContainerSyncData)
+
+<ResponseField name="base_points" type="fxp.Int">
+  Fixed point cost before levelled scaling or modifier application.
+</ResponseField>
+
+<ResponseField name="points_per_level" type="fxp.Int">
+  Additional points added per level purchased. Only meaningful when `can_level` is `true`.
+</ResponseField>
+
+<ResponseField name="weapons" type="[]*Weapon">
+  Weapons granted by this trait (e.g. natural attacks). See [Weapons](/reference/weapons).
+</ResponseField>
+
+<ResponseField name="features" type="Features">
+  Attribute bonuses, DR bonuses, skill bonuses, and other feature effects granted by this trait.
+</ResponseField>
+
+<ResponseField name="round_down" type="bool">
+  When `true`, the final point cost is rounded toward zero (toward a smaller absolute value) rather than away from zero.
+</ResponseField>
+
+<ResponseField name="can_level" type="bool">
+  Indicates the trait supports purchasing multiple levels. When `true`, the `levels` field on `TraitNonContainerOnlyEditData` is meaningful.
+</ResponseField>
+
+### Non-container edit fields (TraitNonContainerOnlyEditData)
+
+<ResponseField name="levels" type="fxp.Int">
+  Number of levels purchased. Only used when `can_level` is `true`.
+</ResponseField>
+
+<ResponseField name="study" type="[]*Study">
+  Study sessions logged toward improving this trait.
+</ResponseField>
+
+<ResponseField name="study_hours_needed" type="study.Level">
+  The study-hours threshold required to gain the next level.
+</ResponseField>
+
+### Container-only fields (TraitContainerSyncData)
+
+<ResponseField name="ancestry" type="string">
+  Name of the ancestry definition used when this container represents a racial template.
+</ResponseField>
+
+<ResponseField name="template_picker" type="*TemplatePicker">
+  Controls how many child traits a player may select from this container.
+</ResponseField>
+
+<ResponseField name="container_type" type="container.Type">
+  Semantic role of the container. See [Container types](#container-types).
+</ResponseField>
+
+---
+
+## Container types
+
+The `container.Type` enum controls how child traits are handled when the container is added to a character.
+
+| Value | Description |
+|-------|-------------|
+| `group` | Plain organisational container. All children are applied unconditionally. |
+| `meta_trait` | Represents a single advantage/disadvantage that is composed of multiple parts (e.g. Dependency). Points are summed. |
+| `race` | Ancestry / racial template. Children are treated as a racial package. |
+| `alternative_abilities` | Only the most expensive enabled child counts toward total points; the others cost 1/5 each. |
+| `ancestry` | Marks the container as defining the character's species ancestry for randomisation purposes. |
+
+---
+
+## Point calculation
+
+For a non-container, non-disabled trait:
+
+```
+raw_cost = base_points + (levels × points_per_level)
+```
+
+After modifiers are applied:
+
+```
+modifier_multiplier = 1 + (sum of % modifiers / 100)
+adjusted_cost = raw_cost × modifier_multiplier + (sum of flat-point modifiers)
+```
+
+When `round_down` is `true`, `adjusted_cost` is rounded toward zero; otherwise it is rounded away from zero (standard GURPS rounding).
+
+---
+
+## TraitModifier fields
+
+A `TraitModifier` adjusts the cost or capabilities of its parent trait. Modifiers may themselves be grouped in containers.
+
+<ResponseField name="id" type="tid.TID" required>
+  Unique identifier.
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Display name of the modifier (e.g. `"Affects Others"`, `"Reduced Range"`).
+</ResponseField>
+
+<ResponseField name="reference" type="string">
+  Book and page reference.
+</ResponseField>
+
+<ResponseField name="local_notes" type="string">
+  Notes displayed on the sheet.
+</ResponseField>
+
+<ResponseField name="vtt_notes" type="string">
+  Notes for VTT systems.
+</ResponseField>
+
+<ResponseField name="tags" type="[]string">
+  Category tags.
+</ResponseField>
+
+<ResponseField name="cost_adj" type="string">
+  The raw cost string entered in the editor (e.g. `"+10%"`, `"-5"`, `"×1.5"`). Parsed by GCS into a cost type and amount.
+</ResponseField>
+
+<ResponseField name="levels" type="fxp.Int">
+  Number of levels of this modifier. When `use_level_from_trait` is `true` this is ignored and the parent trait's level is used instead.
+</ResponseField>
+
+<ResponseField name="use_level_from_trait" type="bool">
+  When `true`, the modifier's per-level cost is multiplied by the owning trait's level count rather than by its own `levels` field.
+</ResponseField>
+
+<ResponseField name="affects" type="affects.Option">
+  Which portion of the parent trait's cost this modifier applies to. See [Affects options](#affects-options).
+</ResponseField>
+
+<ResponseField name="disabled" type="bool">
+  When `true` the modifier is excluded from calculations.
+</ResponseField>
+
+<ResponseField name="features" type="Features">
+  Additional feature effects granted by this modifier.
+</ResponseField>
+
+<ResponseField name="children" type="[]*TraitModifier">
+  Child modifiers. Only present when the modifier is a container.
+</ResponseField>
+
+---
+
+## Affects options
+
+The `affects.Option` enum controls which part of a levelled trait's cost a modifier changes.
+
+| Value | JSON key | Description |
+|-------|----------|-------------|
+| `total` | `"total"` | Modifier applies to the total cost (default). |
+| `levels_only` | `"levels_only"` | Modifier applies only to the per-level portion (`levels × points_per_level`). |
+| `base_only` | `"base_only"` | Modifier applies only to the base cost (`base_points`). |
+
+---
+
+## Self-control roll (CR)
+
+The `cr` field stores a `selfctrl.Roll` value that represents the number the character must roll on 3d6 to resist the disadvantage.
+
+| Value | Meaning |
+|-------|---------|
+| `0` | No self-control roll required |
+| `6` | Roll of 6 or less to resist (Very Bad) |
+| `9` | Roll of 9 or less to resist (Bad) |
+| `12` | Roll of 12 or less to resist (Average) |
+| `15` | Roll of 15 or less to resist (Good) |
+
+The `cr_adj` (`selfctrl.Adjustment`) field modifies the point cost based on the CR value chosen:
+
+| Value | Effect |
+|-------|--------|
+| `none` | No adjustment |
+| `action_penalty` | The CR also imposes a penalty to actions when it fails |
+| `reaction_penalty` | Failed roll causes a reaction penalty |
+| `fright_check_penalty` | Failed roll triggers a Fright Check at a penalty |
+| `fright_check_bonus` | Failed roll triggers a Fright Check with a bonus |
+| `minor_cost_of_living_increase` | Small cost-of-living surcharge |
+| `major_cost_of_living_increase` | Significant cost-of-living surcharge |
+
+---
+
+## JSON example
+
+```json
+{
+  "id": "Tcts000ABcDeFgHi",
+  "name": "Combat Reflexes",
+  "reference": "B43",
+  "base_points": 15,
+  "can_level": false,
+  "round_down": false,
+  "tags": ["Mental"],
+  "features": [
+    { "type": "skill_bonus", "selection_type": "skills_with_name", "name": { "compare": "is", "qualifier": "Fast-Draw" }, "amount": 1 }
+  ],
+  "modifiers": []
+}
+```

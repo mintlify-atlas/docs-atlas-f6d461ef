@@ -1,122 +1,101 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
-  "name": "Mint Starter Kit",
+  "name": "GURPS Character Sheet",
+  "theme": "almond",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#219165",
+    "light": "#a1beab",
+    "dark": "#504847"
   },
-  "favicon": "/favicon.svg",
+  "favicon": "https://media.brand.dev/d005e8f9-67bc-4db3-98b0-d254755473e7.png",
+  "navbar": {
+    "primary": {
+      "type": "github",
+      "href": "https://github.com/richardwilkes/gcs"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/richardwilkes/gcs"
+    }
+  },
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "Documentation",
         "groups": [
           {
-            "group": "Getting started",
+            "group": "Get Started",
             "pages": [
-              "index",
-              "quickstart",
-              "development"
+              "introduction",
+              "installation",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Characters",
+            "pages": [
+              "characters/overview",
+              "characters/traits",
+              "characters/skills-and-spells",
+              "characters/equipment"
+            ]
+          },
+          {
+            "group": "Libraries & Data",
+            "pages": [
+              "libraries/overview",
+              "libraries/managing-libraries",
+              "libraries/file-formats"
+            ]
+          },
+          {
+            "group": "Export & Sharing",
+            "pages": [
+              "export/pdf-export",
+              "export/text-html-export",
+              "export/batch-operations"
             ]
           },
           {
             "group": "Customization",
             "pages": [
-              "essentials/settings",
-              "essentials/navigation"
-            ]
-          },
-          {
-            "group": "Writing content",
-            "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/reusable-snippets"
-            ]
-          },
-          {
-            "group": "AI tools",
-            "pages": [
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
+              "customization/settings",
+              "customization/sheet-settings",
+              "customization/attributes-and-body",
+              "customization/scripting"
             ]
           }
         ]
       },
       {
-        "tab": "API reference",
+        "tab": "Reference",
         "groups": [
           {
-            "group": "API documentation",
+            "group": "Data Model",
             "pages": [
-              "api-reference/introduction"
+              "reference/entity",
+              "reference/traits-and-modifiers",
+              "reference/skills-and-spells-ref",
+              "reference/weapons",
+              "reference/equipment-ref"
             ]
           },
           {
-            "group": "Endpoint examples",
+            "group": "Scripting API",
             "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
+              "reference/scripting-overview",
+              "reference/scripting-objects"
+            ]
+          },
+          {
+            "group": "Command-Line Interface",
+            "pages": [
+              "reference/cli"
             ]
           }
         ]
       }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
-        }
-      ]
-    }
-  },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
-  },
-  "navbar": {
-    "links": [
-      {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
-      }
-    ],
-    "primary": {
-      "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
-    }
-  },
-  "contextual": {
-    "options": [
-     "copy",
-     "view",
-     "chatgpt",
-     "claude",
-     "perplexity",
-     "mcp",
-     "cursor",
-     "vscode"
-   ]
-  },
-  "footer": {
-    "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
-    }
+    ]
   }
 }

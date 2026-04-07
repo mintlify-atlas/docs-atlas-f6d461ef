@@ -1,0 +1,107 @@
+---
+title: "Installation"
+description: "Download and install GCS on macOS, Windows, or Linux, or build it from source."
+---
+
+GCS is a native desktop application. The simplest way to get it is to download a pre-built release for your platform. If you prefer to build from source, you can do that too.
+
+The current release is **version 5.42.0**.
+
+## Download a release
+
+Download the latest release from the [GCS releases page](https://github.com/richardwilkes/gcs/releases).
+
+<Tabs>
+  <Tab title="macOS">
+    1. Download the `.dmg` file from the [releases page](https://github.com/richardwilkes/gcs/releases).
+    2. Open the `.dmg` and drag **GCS** into your **Applications** folder.
+    3. Launch GCS from Applications or Spotlight.
+
+    <Note>
+      On first launch, macOS may show a security prompt because GCS is distributed outside the App Store. Open **System Settings → Privacy & Security** and click **Open Anyway** to proceed.
+    </Note>
+  </Tab>
+  <Tab title="Windows">
+    1. Download the `.exe` installer from the [releases page](https://github.com/richardwilkes/gcs/releases).
+    2. Run the installer and follow the on-screen prompts.
+    3. Launch GCS from the Start menu or desktop shortcut.
+  </Tab>
+  <Tab title="Linux">
+    1. Download the appropriate package for your distribution from the [releases page](https://github.com/richardwilkes/gcs/releases).
+    2. Install the package using your distribution's package manager, or extract the archive and run the `gcs` binary directly.
+
+    <Tip>
+      Make sure the `gcs` binary is executable (`chmod +x gcs`) if you're running it from an extracted archive.
+    </Tip>
+  </Tab>
+</Tabs>
+
+## Build from source
+
+Building GCS from source requires Go and a set of system-level prerequisites from the [Unison](https://github.com/richardwilkes/unison) UI framework, which uses OpenGL via GLFW.
+
+### Prerequisites
+
+Install Go 1.24 or later from [go.dev](https://go.dev/dl/), then install the platform-specific dependencies:
+
+<Tabs>
+  <Tab title="macOS">
+    Install Xcode Command Line Tools:
+
+    ```bash
+    xcode-select --install
+    ```
+  </Tab>
+  <Tab title="Ubuntu / Debian">
+    ```bash
+    sudo apt-get install libgl1-mesa-dev xorg-dev
+    ```
+  </Tab>
+  <Tab title="CentOS / Fedora">
+    ```bash
+    sudo dnf install libX11-devel libXcursor-devel libXrandr-devel \
+      libXinerama-devel mesa-libGL-devel libXi-devel libXxf86vm-devel
+    ```
+  </Tab>
+  <Tab title="Windows">
+    Install [tdm-gcc](https://jmeubank.github.io/tdm-gcc/download/) and [Git for Windows](https://git-scm.com) (for its bash shell). Add both to your `PATH`.
+  </Tab>
+</Tabs>
+
+### Clone and build
+
+```bash
+git clone https://github.com/richardwilkes/gcs.git
+cd gcs
+./build.sh
+```
+
+This produces a `gcs` binary (or `gcs.exe` on Windows) in the repository root.
+
+### Build script options
+
+The `build.sh` script accepts the following flags:
+
+| Flag | Long form | Description |
+|------|-----------|-------------|
+| `-g` | `--go` | Build the Go code and produce the binary |
+| `-a` | `--all` | Build, lint, and run tests with race detection |
+| `-d` | `--dist` | Create a distribution build (version `5.42.0`, trimmed binary) |
+| `-t` | `--test` | Run the test suite |
+| `-r` | `--race` | Run tests with race-condition detection enabled |
+| `-l` | `--lint` | Run the linter (`golangci-lint`) |
+| `-G` | `--gen` | Regenerate source from enums and templates |
+| `-i` | `--i18n` | Extract the localization template |
+| `-h` | `--help` | Show help text |
+
+For a quick development build, running `./build.sh` with no flags is equivalent to `-g` (build only). To run the full quality pipeline before a release:
+
+```bash
+./build.sh -a
+```
+
+To produce a trimmed, versioned distribution binary:
+
+```bash
+./build.sh -d
+```

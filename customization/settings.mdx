@@ -1,0 +1,181 @@
+---
+title: "General settings"
+description: "Configure application-wide defaults for GCS: player info, points, UI scale, tooltips, scripting limits, color themes, and key bindings."
+---
+
+General settings control the behavior of the entire GCS application. You can open them from the **Edit → Settings** menu (or **GCS → Settings** on macOS). Changes take effect immediately and are stored in the settings file alongside the application data.
+
+## Player defaults
+
+| Field | Default | Description |
+|---|---|---|
+| **Default player name** | Current OS username | Pre-fills the Player Name field when you create a new character. |
+| **Default tech level** | `3` | Pre-fills the Tech Level field on new characters. GURPS tech levels run from 0 (stone age) to 12+ (far future). |
+| **Calendar** | Gregorian | The calendar used for date fields across the application. GCS ships with the Gregorian calendar; additional calendars can be loaded from libraries. |
+| **Initial points** | 150 (range: 0–9,999,999) | Starting character point total when you create a new sheet. |
+
+## Tooltips
+
+| Field | Default | Range | Description |
+|---|---|---|---|
+| **Tooltip delay** | 0.75 s | 0–30 s | How long the mouse must hover over a field before the tooltip appears. |
+| **Tooltip dismissal** | 60 s | 1–3,600 s | How long a tooltip stays visible before it auto-closes. |
+
+## Scroll wheel
+
+| Field | Default | Range | Description |
+|---|---|---|---|
+| **Scroll wheel multiplier** | Platform default | 1–9,999 | Scales scroll-wheel movement speed throughout the application. |
+
+## UI scale
+
+Each panel type in GCS has its own initial zoom level when a window is first opened. All scales are in percent (range: 50–400, default: 100).
+
+| Setting | Panel it controls |
+|---|---|
+| **Navigator scale** | The library/file navigator sidebar |
+| **Initial list scale** | Template and library list editors |
+| **Initial editor scale** | Item editor windows |
+| **Initial sheet scale** | Character sheet windows |
+| **Initial PDF scale** | Embedded PDF viewer |
+| **Initial Markdown scale** | Markdown document viewer |
+| **Initial image scale** | Image viewer |
+
+<Note>
+PDF windows also have an **Auto-scaling** option that can automatically zoom the PDF to fit the window width, ignoring the initial scale setting.
+</Note>
+
+## Display resolution
+
+| Field | Default | Range | Description |
+|---|---|---|---|
+| **Monitor resolution** | Auto-detected | 72–300 DPI | Override the monitor PPI used for on-screen layout calculations. Leave at 0 to use the value reported by the primary display. |
+| **Image resolution** | 200 DPI | 50–400 DPI | Resolution used when exporting character sheets or other content as images. Higher values produce sharper output at the cost of larger files. |
+
+## Column widths
+
+| Field | Default | Range | Description |
+|---|---|---|---|
+| **Maximum auto column width** | 800 px | 50–9,999 px | Caps how wide any auto-sized table column can grow. Prevents a single long entry from making other columns unreadably narrow. |
+
+## External PDF viewer
+
+By default, GCS opens PDF files in its built-in viewer. To use an external application instead, enter a command-line template in **External PDF command line**. GCS substitutes the following tokens at runtime:
+
+| Token | Replaced with |
+|---|---|
+| `$FILE` | The absolute path to the PDF file |
+| `$PAGE` | The 1-based page number to open to |
+
+**Example — open in Acrobat Reader on macOS:**
+
+```bash
+open -a "Adobe Acrobat Reader" "$FILE"
+```
+
+**Example — open at a specific page in Okular on Linux:**
+
+```bash
+okular --page $PAGE "$FILE"
+```
+
+## Behavior
+
+| Setting | Default | Description |
+|---|---|---|
+| **Initial field click selects all** | Off | When enabled, clicking a text field for the first time selects all of its content, making it easy to replace the value without a second click. |
+| **Auto-fill profile** | On | Automatically generates random height, weight, and other profile fields when you create a new character. |
+| **Auto-add natural attacks** | On | Automatically adds the Natural Attacks trait (strike, kick) to newly created characters. |
+| **Group containers on sort** | Off | When sorting a list, keeps container rows grouped with their children rather than sorting them individually. |
+| **Restore workspace on start** | On | Reopens the windows and files you had open when GCS was last closed. |
+
+## Scripting time limit
+
+| Field | Default | Range | Description |
+|---|---|---|---|
+| **Permitted per-script exec time** | 0.05 s | 0.001–0.5 s | Maximum CPU time any single embedded JavaScript expression may consume before GCS interrupts it. Increase this only if you have complex scripts that legitimately need more time. |
+
+See [Scripting](/customization/scripting) for details on writing scripts.
+
+## Themes and colors
+
+GCS supports **light**, **dark**, and **system** (auto) appearance modes. You can also fine-tune individual interface colors.
+
+### Sheet tint colors
+
+The following sheet panel areas each have an independently adjustable tint color with separate light-mode and dark-mode values:
+
+<AccordionGroup>
+  <Accordion title="Portrait and identity panels">
+    - **Portrait** — character portrait frame
+    - **Identity** — name, title, organization, and religion fields
+    - **Miscellaneous** — tech level, player name, and related fields
+    - **Points** — point totals panel
+    - **Description** — physical description panel
+  </Accordion>
+  <Accordion title="Attribute and secondary panels">
+    - **Primary Attributes** — ST, DX, IQ, HT and similar primary stats
+    - **Secondary Attributes** — HP, FP, Basic Speed, Basic Move, and derived stats
+    - **Body Type** — hit location table
+    - **Encumbrance, Move & Dodge** — encumbrance levels and move/dodge scores
+    - **Lifting & Moving Things** — lifting, carrying, and throwing stats
+    - **Basic Damage** — thr/sw damage values
+    - **Point Pools** — pool attributes such as HP and FP
+  </Accordion>
+  <Accordion title="List panels">
+    - **Reactions** — reaction modifier list
+    - **Conditions** — conditional modifier list
+    - **Melee Weapons** — melee attack table
+    - **Ranged Weapons** — ranged attack table
+    - **Traits** — advantages, disadvantages, and quirks list
+    - **Skills** — skills list
+    - **Spells** — spells list
+    - **Carried Equipment** — carried gear list
+    - **Other Equipment** — other/stored gear list
+    - **Notes** — notes list
+  </Accordion>
+</AccordionGroup>
+
+### Application colors
+
+In addition to sheet tints, the following application-wide colors are customizable:
+
+| Color | Purpose |
+|---|---|
+| **Surface** | Default background color for panels and windows |
+| **Header** | Column header background in tables |
+| **Banding** | Alternating row stripe color in tables |
+| **Focus** | Keyboard focus ring color |
+| **Tooltip** | Tooltip background |
+| **Error** | Error highlight color |
+| **Warning** | Warning highlight color |
+
+All colors have separate values for light and dark mode. Click **Reset** next to any color to restore it to the factory default.
+
+## Key bindings
+
+GCS lets you remap nearly every keyboard shortcut. Open the **Key Bindings** panel (accessible from Settings) to view and change them. To reassign a binding:
+
+<Steps>
+  <Step title="Find the command">
+    Browse or search the command list.
+  </Step>
+  <Step title="Click the binding">
+    Click on the existing shortcut cell for the command you want to change.
+  </Step>
+  <Step title="Press the new key combination">
+    Type the key combination you want. GCS records the first valid combination you press.
+  </Step>
+  <Step title="Resolve conflicts">
+    If the combination is already in use, GCS highlights the conflict. You can either choose a different key or accept the reassignment and leave the other command without a binding.
+  </Step>
+</Steps>
+
+## Settings file location
+
+GCS stores its settings in a single JSON file. The file is located:
+
+- **Co-located mode** — next to the GCS executable, if GCS has write access to that directory. This is common for portable or developer builds.
+- **App data directory** — in the OS-standard application data folder otherwise (e.g., `~/.local/share/gcs/` on Linux, `~/Library/Application Support/gcs/` on macOS, `%APPDATA%\gcs\` on Windows).
+
+You can override the location by passing `--settings <path>` on the command line when launching GCS.

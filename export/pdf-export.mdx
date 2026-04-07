@@ -1,0 +1,134 @@
+---
+title: "PDF export"
+description: "Export your GCS character sheets to PDF, configure page settings and image resolution, and link rulebook page references to PDF files for in-app lookup."
+---
+
+GCS can render the full character sheet layout to a PDF file. The resulting file mirrors exactly what you see on screen, including the grid layout, portrait image, and all sheet sections.
+
+## Exporting to PDF from the GUI
+
+<Steps>
+  <Step title="Open a character sheet">
+    Open a `.gcs` character sheet file in GCS. The sheet must be the active, focused dockable.
+  </Step>
+  <Step title="Choose the export format">
+    From the menu bar, select **File → Export → PDF**. A save dialog will appear.
+  </Step>
+  <Step title="Choose a destination">
+    Navigate to the directory where you want to save the file, confirm the filename, and click **Save**. GCS renders each page of the sheet to PDF and writes the file.
+  </Step>
+</Steps>
+
+<Note>
+  In addition to PDF, GCS also supports exporting the sheet as an image via **File → Export → PNG**, **WEBP**, or **JPEG** using the same flow.
+</Note>
+
+## Page settings
+
+Page layout is controlled by the **Sheet Settings** panel (accessible from **Edit → Sheet Settings**). The relevant fields are stored in the `PageSettings` struct.
+
+| Setting | Description | Default |
+|---|---|---|
+| **Paper size** | Named size (`letter`, `legal`, `tabloid`, `a0`–`a6`) or a custom `WxH` dimension string | `letter` (8.5 × 11 in) |
+| **Orientation** | `portrait` or `landscape` | `portrait` |
+| **Top margin** | Space from the top edge of the page | 0.25 in |
+| **Left margin** | Space from the left edge | 0.25 in |
+| **Bottom margin** | Space from the bottom edge | 0.25 in |
+| **Right margin** | Space from the right edge | 0.25 in |
+
+### Standard paper sizes
+
+GCS recognises the following named sizes out of the box:
+
+<CardGroup cols={2}>
+  <Card title="North American" icon="file">
+    - `letter` — 8.5 × 11 in
+    - `legal` — 8.5 × 14 in
+    - `tabloid` — 11 × 17 in
+  </Card>
+  <Card title="ISO A-series" icon="file">
+    - `a0` through `a6`
+    - e.g. `a4` — 210 × 297 mm
+  </Card>
+</CardGroup>
+
+You can also supply a custom size using the format `<width> x <height>`, where each dimension is a number followed by a unit (`in`, `mm`, `cm`, or `pt`). For example: `7in x 10in`.
+
+## Image resolution
+
+When GCS rasterises content for export (PNG, WEBP, JPEG) or embeds raster elements during PDF generation, it uses the **Image Resolution** setting found in **Edit → General Settings**.
+
+| Constant | Value |
+|---|---|
+| Default (`ImageResolutionDef`) | **200 DPI** |
+| Minimum (`ImageResolutionMin`) | 50 DPI |
+| Maximum (`ImageResolutionMax`) | 400 DPI |
+
+Higher resolution produces sharper output at the cost of larger file sizes. For most print-at-home use, 200 DPI is sufficient. Increase to 300–400 DPI if you need print-shop-quality output.
+
+## Page reference mappings
+
+Every trait, skill, spell, equipment item, and note in GCS carries a **page reference** field (e.g. `B271` for *Basic Set* page 271). When you click a page reference in the sheet, GCS looks up the corresponding PDF file using the **Page References** settings panel (**Edit → Page References**).
+
+Each mapping entry consists of:
+
+| Field | Description |
+|---|---|
+| **ID** | The book prefix used in page reference strings (e.g. `B` for *Basic Set*) |
+| **Path** | The absolute path on disk to the PDF file for that book |
+| **Offset** | An integer page offset added to every reference, useful when a PDF has front matter that shifts the printed page numbers |
+
+Page reference mappings are stored in a `.refs` settings file and can be shared between users or checked into source control alongside a campaign.
+
+### Example
+
+If you map `B` → `/home/user/books/basic_set.pdf` with an offset of `0`, clicking the page reference `B271` in the sheet will open `basic_set.pdf` at page 271.
+
+If your PDF has a two-page cover that shifts all content by two pages, set the offset to `2` so that `B271` opens page 273 in the file.
+
+## External PDF viewer
+
+By default GCS opens PDF files using the platform's default viewer. You can override this with the **External PDF Command Line** setting in **Edit → General Settings** (`ExternalPDFCmdLine`).
+
+Set this to the full command line used to open a PDF at a specific page. GCS substitutes the following placeholders at runtime:
+
+| Placeholder | Replaced with |
+|---|---|
+| `{file}` | The absolute path to the PDF file |
+| `{page}` | The target page number (after applying the offset) |
+
+<Tip>
+  For example, to use Okular on Linux with a specific page, set the command to:
+  ```bash
+  okular --page {page} {file}
+  ```
+  For SumatraPDF on Windows:
+  ```bash
+  SumatraPDF.exe -page {page} {file}
+  ```
+</Tip>
+
+## What gets exported
+
+The PDF export renders the complete character sheet as it appears in the GCS interface. This includes:
+
+- Portrait image
+- Character identity and biography fields (name, player, title, organisation, age, height, weight, etc.)
+- All attribute blocks (primary, secondary, and pools such as HP and FP)
+- Encumbrance table with move and dodge values
+- Lift values (basic lift, one-handed, two-handed, shove, etc.)
+- Traits list (advantages, disadvantages, perks, quirks)
+- Skills list with calculated levels
+- Spells list
+- Carried equipment with weight and cost totals
+- Other (non-carried) equipment
+- Melee and ranged weapon tables
+- Hit location table
+- Reactions and conditional modifiers
+- Notes
+
+The layout follows the block arrangement defined in **Sheet Settings → Block Layout**.
+
+<Card title="Related: text and HTML export" href="/export/text-html-export">
+  For programmatic or custom-formatted output, GCS also supports exporting sheets to any text or HTML format using Go templates.
+</Card>

@@ -1,0 +1,130 @@
+---
+title: "Character overview"
+description: "Understand the structure of a GCS character sheet, how point tracking works, and how to create or open characters."
+---
+
+A GCS character sheet is the central document for a GURPS character. It stores every detail about the character — from basic identity and physical description through attributes, traits, skills, spells, and gear — and keeps all derived values in sync as you edit.
+
+## Creating and opening characters
+
+<Steps>
+  <Step title="Create a new character">
+    Choose **File → New Character Sheet**. GCS creates a fresh sheet pre-populated with the default attribute set and, if enabled in general settings, natural attacks and a randomly generated profile. The character starts with the number of points configured in **General Settings → Initial Points**.
+  </Step>
+  <Step title="Open an existing character">
+    Choose **File → Open** (or drag a `.gcs` file onto the application window) to load a saved character. GCS recalculates all derived values when the file loads.
+  </Step>
+  <Step title="Save your work">
+    Choose **File → Save** at any time. Character sheets are stored as `.gcs` JSON files and can be version-controlled or shared like any other text file.
+  </Step>
+</Steps>
+
+<Tip>
+  You can have multiple character sheets open at once. Each sheet is shown as a tab in the main window.
+</Tip>
+
+## Sheet layout
+
+The character sheet is divided into several panels that map directly to the underlying `EntityData` model:
+
+| Panel | What it contains |
+|---|---|
+| **Identity** | Character name, player name, title, organization, religion, tech level, portrait, and physical description (age, height, weight, eyes, hair, skin, handedness, size modifier) |
+| **Attributes** | Primary attributes (ST, DX, IQ, HT) and secondary characteristics (HP, Will, Perception, FP, Basic Speed, Basic Move) — each showing its current value and point cost |
+| **Traits** | Advantages, disadvantages, quirks, perks, and racial traits — each with a point cost |
+| **Skills** | All skills the character has invested points in, along with calculated skill levels |
+| **Spells** | Spells known, organized by college, with calculated skill levels |
+| **Equipment** | Carried and other (stored/stashed) equipment, with weight and value totals |
+| **Notes** | Free-form notes attached to the character |
+
+## The entity data model
+
+Every character sheet is backed by an `Entity` value. The serializable fields in `EntityData` are:
+
+```go
+type EntityData struct {
+    Version          int             // file format version
+    ID               tid.TID         // unique character identifier
+    TotalPoints      fxp.Int         // total points budget
+    PointsRecord     []*PointsRecord // history of point changes
+    Profile          Profile         // identity and physical description
+    SheetSettings    *SheetSettings  // per-character display settings
+    Attributes       *Attributes     // attribute values and adjustments
+    Traits           []*Trait        // advantages, disadvantages, quirks
+    Skills           []*Skill        // skills and techniques
+    Spells           []*Spell        // spells known
+    CarriedEquipment []*Equipment    // gear the character is carrying
+    OtherEquipment   []*Equipment    // gear that is not carried (e.g. stored)
+    Notes            []*Note         // free-form notes
+    CreatedOn        jio.Time        // creation timestamp
+    ModifiedOn       jio.Time        // last-modified timestamp
+    ThirdParty       map[string]any  // extension data for third-party tools
+}
+```
+
+The `Profile` struct captures the identity panel:
+
+```go
+type Profile struct {
+    Name        string     // character name
+    PlayerName  string
+    Title       string
+    Organization string
+    Religion    string
+    TechLevel   string
+    Age, Birthday, Eyes, Hair, Skin, Handedness, Gender string
+    Height      fxp.Length
+    Weight      fxp.Weight
+    SizeModifier int
+    PortraitData []byte
+}
+```
+
+## Point tracking
+
+GCS tracks every point your character spends. The **Points** panel at the top of the sheet shows a running breakdown using the `PointsBreakdown` struct:
+
+```go
+type PointsBreakdown struct {
+    Ancestry      fxp.Int  // points from racial/ancestry traits
+    Attributes    fxp.Int  // points spent on attribute adjustments
+    Advantages    fxp.Int  // positive-cost traits
+    Disadvantages fxp.Int  // negative-cost traits (shown as a negative number)
+    Quirks        fxp.Int  // -1-point quirks
+    Skills        fxp.Int  // skill and technique points
+    Spells        fxp.Int  // spell points
+}
+```
+
+The total of all categories must equal the character's **TotalPoints** budget for the character to be complete. GCS highlights the total in red when the character is over budget and in a neutral color when they are within budget.
+
+<Note>
+  You can view the full history of point changes (when points were added and why) by opening the **Points Record** panel from the **Sheet** menu.
+</Note>
+
+## Campaign association
+
+A character sheet can be associated with a **campaign file** (`.gcamp`). When a campaign is open, all character sheets that are part of it share:
+
+- The same attribute definitions and body type
+- The same sheet settings (page size, colors, column visibility)
+- The same set of active libraries
+
+To associate a sheet with a campaign, open the campaign first, then open (or create) character sheets within it.
+
+## Explore further
+
+<CardGroup cols={2}>
+  <Card title="Traits" icon="list-check" href="/characters/traits">
+    Advantages, disadvantages, quirks, modifiers, prerequisites, and level-based traits
+  </Card>
+  <Card title="Skills and spells" icon="graduation-cap" href="/characters/skills-and-spells">
+    Skill levels, difficulty, techniques, defaults, and the spell college system
+  </Card>
+  <Card title="Equipment" icon="backpack" href="/characters/equipment">
+    Carried gear, containers, encumbrance levels, and loot
+  </Card>
+  <Card title="Sheet settings" icon="sliders" href="/customization/settings">
+    Customize page layout, attribute display, and default options
+  </Card>
+</CardGroup>

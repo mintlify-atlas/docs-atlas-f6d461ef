@@ -1,0 +1,312 @@
+---
+title: "Equipment reference"
+description: "Complete reference for the Equipment and EquipmentModifier data models, including value, weight, containers, and encumbrance calculations."
+---
+
+Equipment in GCS covers everything a character owns: weapons, armour, tools, and miscellaneous gear. Items stored in the `equipment` list of an [entity](/reference/entity) are **carried** (and count toward encumbrance), while items in `other_equipment` are owned but not on the character's person.
+
+---
+
+## EquipmentData fields
+
+`EquipmentData` is the serialisable subset of `Equipment`.
+
+### Identity
+
+<ResponseField name="id" type="tid.TID" required>
+  Unique identifier. The first byte distinguishes a plain equipment item (`kinds.Equipment`) from a container (`kinds.EquipmentContainer`).
+</ResponseField>
+
+<ResponseField name="third_party" type="map[string]any">
+  Arbitrary data for VTT integrations. Ignored by GCS.
+</ResponseField>
+
+<ResponseField name="children" type="[]*Equipment">
+  Child items. Present only when `Container()` returns `true`.
+</ResponseField>
+
+### Common sync fields (EquipmentSyncData)
+
+<ResponseField name="description" type="string">
+  Display name for the item (e.g. `"Broadsword"`, `"Leather Armor"`, `"Backpack"`).
+</ResponseField>
+
+<ResponseField name="reference" type="string">
+  Book and page reference (e.g. `"B271"`).
+</ResponseField>
+
+<ResponseField name="local_notes" type="string">
+  Notes shown on the sheet beneath the item name.
+</ResponseField>
+
+<ResponseField name="tech_level" type="string">
+  Technology level at which this item is available (e.g. `"3"`, `"8"`).
+</ResponseField>
+
+<ResponseField name="legality_class" type="string">
+  GURPS legality class string. The default for new items is `"4"` (completely legal).
+
+  | Value | Meaning |
+  |-------|---------|
+  | `"0"` | Banned — only military or government may own |
+  | `"1"` | Military; non-military possession is a serious crime |
+  | `"2"` | Restricted; a licence is required |
+  | `"3"` | Licensed; background check or local permit required |
+  | `"4"` | Open civilian market |
+</ResponseField>
+
+<ResponseField name="tags" type="[]string">
+  Category tags (e.g. `["Melee Weapon", "Sword"]`).
+</ResponseField>
+
+<ResponseField name="base_value" type="string">
+  Base monetary value expression (e.g. `"500"`, `"1d×100"`). Evaluated to produce a `fxp.Int` cost.
+</ResponseField>
+
+<ResponseField name="base_weight" type="string">
+  Base weight expression (e.g. `"3 lb"`, `"0.5 kg"`). Parsed by `fxp.Weight` using the sheet's weight-unit setting.
+</ResponseField>
+
+<ResponseField name="max_uses" type="int">
+  Maximum number of uses before the item is depleted. `0` means unlimited.
+</ResponseField>
+
+<ResponseField name="prereqs" type="*PrereqList">
+  Prerequisite conditions (rarely used on equipment; applicable when equipment requires a skill or attribute level).
+</ResponseField>
+
+<ResponseField name="weapons" type="[]*Weapon">
+  Weapons provided by this item (e.g. a sword's swing and thrust attacks). See [Weapons](/reference/weapons).
+</ResponseField>
+
+<ResponseField name="features" type="Features">
+  Feature bonuses granted while this item is equipped (e.g. DR from armour).
+</ResponseField>
+
+<ResponseField name="ignore_weight_for_skills" type="bool">
+  When `true`, the weight of this item is excluded from the encumbrance penalty applied to skills (useful for items like form-fitting armour).
+</ResponseField>
+
+### Edit-only fields (EquipmentEditData)
+
+<ResponseField name="vtt_notes" type="string">
+  Notes for VTT systems.
+</ResponseField>
+
+<ResponseField name="replacements" type="map[string]string">
+  Name-substitution map for template instantiation.
+</ResponseField>
+
+<ResponseField name="modifiers" type="[]*EquipmentModifier">
+  List of modifiers that adjust this item's cost, weight, or capabilities. See [EquipmentModifier fields](#equipmentmodifier-fields).
+</ResponseField>
+
+<ResponseField name="rated_strength" type="fxp.Int">
+  Override for the item's rated ST (used in weapon damage calculations when the item has a different ST from the character).
+</ResponseField>
+
+<ResponseField name="quantity" type="fxp.Int" required>
+  Number of this item owned. Defaults to `1`. Extended cost and weight are `quantity × base`.
+</ResponseField>
+
+<ResponseField name="level" type="fxp.Int">
+  Item level for items that scale (e.g. a power cell at different charge levels).
+</ResponseField>
+
+<ResponseField name="uses" type="int">
+  Current number of uses remaining. Only meaningful when `max_uses > 0`.
+</ResponseField>
+
+<ResponseField name="equipped" type="bool">
+  Whether the item is currently worn or held. Only carried (`equipment` list) items can be equipped. Equipped items contribute their features (e.g. DR) to the character; unequipped items in the carried list still count toward encumbrance but provide no features.
+</ResponseField>
+
+---
+
+## Carried vs. other equipment
+
+| List | JSON key | Encumbrance | Features active |
+|------|----------|-------------|-----------------|
+| Carried | `"equipment"` | Yes (all items regardless of `equipped`) | Only when `equipped: true` |
+| Other | `"other_equipment"` | No | Never |
+
+Encumbrance is calculated from the total weight of all items in the carried list (including container contents), compared against the character's Basic Lift.
+
+### Encumbrance levels
+
+| Level | Max carried weight | Move penalty | Dodge penalty |
+|-------|--------------------|--------------|---------------|
+| None (0) | Basic Lift | — | — |
+| Light (1) | 2 × BL | −1 | −1 |
+| Medium (2) | 3 × BL | −2 | −2 |
+| Heavy (3) | 6 × BL | −3 | −3 |
+| Extra-Heavy (4) | 10 × BL | −4 | −4 |
+
+Basic Lift (BL) = ST² / 5 lb (or ÷ 5 kg).
+
+---
+
+## EquipmentModifier fields
+
+An `EquipmentModifier` adjusts the cost, weight, or features of its parent equipment item. Modifiers may be grouped in containers.
+
+<ResponseField name="id" type="tid.TID" required>
+  Unique identifier.
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Display name (e.g. `"Fine Quality"`, `"Vs. Undead"`).
+</ResponseField>
+
+<ResponseField name="reference" type="string">
+  Book and page reference.
+</ResponseField>
+
+<ResponseField name="local_notes" type="string">
+  Notes shown on the sheet.
+</ResponseField>
+
+<ResponseField name="vtt_notes" type="string">
+  Notes for VTT systems.
+</ResponseField>
+
+<ResponseField name="tags" type="[]string">
+  Category tags.
+</ResponseField>
+
+<ResponseField name="tech_level" type="string">
+  Tech level at which this modifier is available.
+</ResponseField>
+
+<ResponseField name="cost_type" type="emcost.Type">
+  How the `cost` amount is applied.
+
+  | Value | Description |
+  |-------|-------------|
+  | `"to_original_cost"` | Adds to the base value expression (e.g. adds a flat currency amount) |
+  | `"to_base_cost"` | Percentage of base cost |
+  | `"to_final_base_cost"` | Percentage of the cost after all `to_base_cost` modifiers |
+  | `"to_final_cost"` | Percentage of the fully computed cost |
+  | `"cf"` | Cost Factor: `final_cost = base × (1 + sum_of_CF)` |
+</ResponseField>
+
+<ResponseField name="cost" type="string">
+  Cost adjustment expression (e.g. `"500"`, `"+20%"`, `"×1.5"`).
+</ResponseField>
+
+<ResponseField name="cost_is_per_level" type="bool">
+  When `true`, the cost amount is multiplied by the owning item's level.
+</ResponseField>
+
+<ResponseField name="cost_is_per_pound" type="bool">
+  When `true`, the cost amount is multiplied by the item's base weight in pounds.
+</ResponseField>
+
+<ResponseField name="weight_type" type="emweight.Type">
+  How the `weight` amount is applied.
+
+  | Value | Description |
+  |-------|-------------|
+  | `"to_original_weight"` | Adds to the base weight expression |
+  | `"to_base_weight"` | Percentage of base weight |
+  | `"to_final_base_weight"` | Percentage of weight after all `to_base_weight` modifiers |
+  | `"to_final_weight"` | Percentage of the fully computed weight |
+</ResponseField>
+
+<ResponseField name="weight" type="string">
+  Weight adjustment expression (e.g. `"2 lb"`, `"+10%"`, `"-0.5 kg"`).
+</ResponseField>
+
+<ResponseField name="weight_is_per_level" type="bool">
+  When `true`, the weight amount is multiplied by the owning item's level.
+</ResponseField>
+
+<ResponseField name="features" type="Features">
+  Additional feature effects provided by this modifier (e.g. extra DR from laminated armour).
+</ResponseField>
+
+<ResponseField name="disabled" type="bool">
+  When `true` the modifier is excluded from cost, weight, and feature calculations.
+</ResponseField>
+
+<ResponseField name="children" type="[]*EquipmentModifier">
+  Child modifiers. Present only when this modifier is a container.
+</ResponseField>
+
+---
+
+## fxp.Weight and units
+
+`fxp.Weight` stores a weight value as a fixed-point decimal together with a unit code. GCS supports pounds (`lb`) and kilograms (`kg`). The sheet setting `SheetSettings.DefaultWeightUnits` controls which unit is displayed.
+
+Weight string parsing accepts common notations:
+
+```
+"3 lb"   → 3 pounds
+"1.5 kg" → 1.5 kilograms
+"0.25"   → value in the sheet's default weight unit
+```
+
+---
+
+## JSON example
+
+### Equipment item
+
+```json
+{
+  "id": "Ects000AbCdEfGhI",
+  "description": "Broadsword",
+  "reference": "B271",
+  "tags": ["Melee Weapon", "Sword"],
+  "tech_level": "2",
+  "legality_class": "4",
+  "base_value": "500",
+  "base_weight": "3 lb",
+  "quantity": 1,
+  "equipped": true,
+  "weapons": [
+    {
+      "id": "WMts000AbCdEfGhI",
+      "damage": { "type": "cut", "st": "sw" },
+      "strength": { "min": 10 },
+      "usage": "Swing",
+      "reach": { "min": 1, "max": 1 },
+      "parry": { "can_parry": true, "modifier": 0 },
+      "defaults": [{ "type": "skill", "name": "Broadsword" }]
+    }
+  ],
+  "modifiers": []
+}
+```
+
+### Equipment with a modifier
+
+```json
+{
+  "id": "Ects000BcDeFgHiJ",
+  "description": "Mail Hauberk",
+  "reference": "B283",
+  "tags": ["Armor"],
+  "tech_level": "3",
+  "legality_class": "4",
+  "base_value": "250",
+  "base_weight": "25 lb",
+  "quantity": 1,
+  "equipped": true,
+  "features": [
+    { "type": "dr_bonus", "location": "torso", "amount": 4 }
+  ],
+  "modifiers": [
+    {
+      "id": "EMts000CdEfGhIjK",
+      "name": "Fine",
+      "reference": "B285",
+      "cost_type": "to_original_cost",
+      "cost": "×4",
+      "weight_type": "to_original_weight",
+      "weight": "×0.8"
+    }
+  ]
+}
+```

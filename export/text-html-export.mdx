@@ -1,0 +1,424 @@
+---
+title: "Text and HTML export"
+description: "Export GCS character sheets to any text or HTML format using Go text/template or html/template, with full access to character data including attributes, traits, skills, equipment, and weapons."
+---
+
+GCS can export a character sheet to any text-based format — plain text, HTML, XML, Markdown, CSV, or anything else — using Go's standard template system. You provide a template file; GCS feeds it the complete character data and writes the result to disk.
+
+## Template format
+
+A template file must begin with a **header line** that identifies its type:
+
+```
+GCS HTML Template v1
+```
+
+or
+
+```
+GCS Text Template v1
+```
+
+Everything after the first line is the Go template body. GCS detects the header and parses the remainder with `html/template` or `text/template` respectively.
+
+<Note>
+  Files that do not start with either header are processed by the legacy key-substitution exporter described in the [legacy format section](#legacy-template-format) below.
+</Note>
+
+## Running the export from the CLI
+
+```bash
+gcs --text <template-file> <sheet1.gcs> [sheet2.gcs ...]
+```
+
+For each listed `.gcs` file, GCS:
+
+1. Loads and recalculates the character sheet.
+2. Executes the template with the character data.
+3. Writes the result to a file with the same base name as the sheet but with the template's extension.
+
+For example:
+
+```bash
+gcs --text character-sheet.html.tmpl my-character.gcs
+```
+
+This produces `my-character.html` alongside `my-character.gcs`.
+
+<Warning>
+  If the sheet file is not exportable (i.e. not a `.gcs` character sheet), GCS skips it with a log message and continues.
+</Warning>
+
+## Template data reference
+
+Your template receives a single data object with the following top-level fields. All numeric values that represent GURPS fixed-point numbers are of type `fxp.Int` and can be converted with the provided template functions.
+
+### Character identity
+
+| Field | Type | Description |
+|---|---|---|
+| `.Name` | `string` | Character's name |
+| `.Player` | `string` | Player's name |
+| `.Title` | `string` | Character's title or rank |
+| `.Organization` | `string` | Organisation or affiliation |
+| `.Religion` | `string` | Religion |
+| `.TechLevel` | `string` | Technology level |
+| `.SizeModifier` | `int` | Adjusted size modifier |
+| `.Age` | `string` | Age |
+| `.Birthday` | `string` | Birthday |
+| `.Eyes` | `string` | Eye colour |
+| `.Hair` | `string` | Hair colour/style |
+| `.Skin` | `string` | Skin tone |
+| `.Handedness` | `string` | Dominant hand |
+| `.Gender` | `string` | Gender |
+| `.Height` | `string` | Height (formatted in sheet units) |
+| `.Weight` | `string` | Weight (formatted in sheet units) |
+| `.CreatedOn` | `string` | Date the sheet was created |
+| `.ModifiedOn` | `string` | Date the sheet was last modified |
+| `.EmbeddedPortraitDataURL` | `template.URL` | Base64 data URL of the portrait image (see below) |
+
+### Basic combat values
+
+| Field | Type | Description |
+|---|---|---|
+| `.Thrust` | `string` | Thrust damage string |
+| `.Swing` | `string` | Swing damage string |
+
+### Points
+
+`.Points` holds a summary of how points are spent:
+
+| Field | Type | Description |
+|---|---|---|
+| `.Points.Total` | `fxp.Int` | Total character points |
+| `.Points.Unspent` | `fxp.Int` | Unspent points |
+| `.Points.Attributes` | `fxp.Int` | Points spent on attributes |
+| `.Points.Advantages` | `fxp.Int` | Points in advantages |
+| `.Points.Disadvantages` | `fxp.Int` | Points in disadvantages |
+| `.Points.Quirks` | `fxp.Int` | Points in quirks |
+| `.Points.Skills` | `fxp.Int` | Points in skills |
+| `.Points.Spells` | `fxp.Int` | Points in spells |
+
+### Attributes
+
+`.Attributes` is split into three groups:
+
+| Field | Description |
+|---|---|
+| `.Attributes.Primary` | Slice of primary attributes (ST, DX, IQ, HT, …) |
+| `.Attributes.PrimaryByID` | Map of primary attributes keyed by attribute ID |
+| `.Attributes.Secondary` | Slice of secondary attributes (Perception, Will, Basic Speed, Basic Move, …) |
+| `.Attributes.SecondaryByID` | Map of secondary attributes keyed by attribute ID |
+| `.Attributes.Pools` | Slice of point pools (HP, FP, …) |
+| `.Attributes.PoolsByID` | Map of pools keyed by attribute ID |
+
+Each attribute entry exposes:
+
+| Field | Type | Description |
+|---|---|---|
+| `.ID` | `string` | Attribute definition ID (e.g. `st`, `dx`, `iq`, `ht`) |
+| `.Name` | `string` | Short name |
+| `.FullName` | `string` | Full display name |
+| `.CombinedName` | `string` | Combined short/full name |
+| `.Value` | `fxp.Int` | Current maximum value |
+| `.Points` | `fxp.Int` | Points spent on this attribute |
+
+Pools additionally expose `.Current` and `.Maximum` (`fxp.Int`).
+
+### Encumbrance
+
+`.Encumbrance` is a slice of all five encumbrance levels:
+
+| Field | Type | Description |
+|---|---|---|
+| `.Name` | `string` | Level name (e.g. `None`, `Light`, `Medium`, `Heavy`, `Extra-Heavy`) |
+| `.Level` | `int` | Numeric level (0–4) |
+| `.Penalty` | `int` | Move/dodge penalty (negative of level) |
+| `.Move` | `int` | Move score at this encumbrance level |
+| `.Dodge` | `int` | Dodge score at this encumbrance level |
+| `.MaxLoad` | `string` | Maximum carried weight at this level |
+| `.IsCurrent` | `bool` | `true` if this is the character's current encumbrance level |
+
+### Lift values
+
+`.Lift` contains pre-formatted weight strings:
+
+| Field | Description |
+|---|---|
+| `.Lift.Basic` | Basic lift |
+| `.Lift.OneHanded` | One-handed lift |
+| `.Lift.TwoHanded` | Two-handed lift |
+| `.Lift.Shove` | Shove and knock over |
+| `.Lift.RunningShove` | Running shove and knock over |
+| `.Lift.CarryOnBack` | Carry on back |
+| `.Lift.ShiftSlightly` | Shift slightly |
+
+### Traits
+
+`.Traits` is a flat slice traversing the entire trait tree (including container groups). Each entry:
+
+| Field | Type | Description |
+|---|---|---|
+| `.ID` | `tid.TID` | Unique item ID |
+| `.ParentID` | `tid.TID` | Parent container ID, if any |
+| `.Type` | `string` | `"item"` or `"group"` |
+| `.Points` | `fxp.Int` | Adjusted point cost |
+| `.Description` | `string` | Full display string |
+| `.UserDescription` | `string` | User-supplied description override |
+| `.ModifierNotes` | `string` | Active modifier notes |
+| `.Notes` | `string` | Notes |
+| `.UnsatisfiedReason` | `string` | Non-empty if prerequisites are unmet |
+| `.PageRef` | `string` | Rulebook page reference (e.g. `B101`) |
+| `.Tags` | `[]string` | Tag list |
+| `.Depth` | `int` | Nesting depth (0 = top level) |
+
+### Skills
+
+`.Skills` is a flat slice of the skill tree. Each entry:
+
+| Field | Type | Description |
+|---|---|---|
+| `.ID` | `tid.TID` | Unique item ID |
+| `.ParentID` | `tid.TID` | Parent container ID |
+| `.Type` | `string` | `"item"` or `"group"` |
+| `.Points` | `fxp.Int` | Adjusted points |
+| `.Level` | `string` | Calculated skill level string |
+| `.RelativeLevel` | `string` | Relative level string (e.g. `IQ+2`) |
+| `.Difficulty` | `string` | Difficulty description (e.g. `IQ/H`) |
+| `.Description` | `string` | Full display name |
+| `.ModifierNotes` | `string` | Active modifier notes |
+| `.Notes` | `string` | Notes |
+| `.UnsatisfiedReason` | `string` | Non-empty if prerequisites unmet |
+| `.PageRef` | `string` | Rulebook page reference |
+| `.Tags` | `[]string` | Tag list |
+| `.Depth` | `int` | Nesting depth |
+
+### Spells
+
+`.Spells` mirrors the skill structure with additional fields:
+
+| Field | Type | Description |
+|---|---|---|
+| `.Class` | `string` | Spell class |
+| `.Colleges` | `[]string` | College list |
+| `.Mana.Cast` | `string` | Casting cost |
+| `.Mana.Maintain` | `string` | Maintenance cost |
+| `.TimeToCast` | `string` | Casting time |
+| `.Duration` | `string` | Duration |
+| `.Resist` | `string` | Resistance roll |
+| `.Rituals` | `string` | Ritual notes |
+
+### Equipment
+
+`.Equipment.Carried` and `.Equipment.Other` are flat slices of carried and non-carried equipment respectively. Each entry:
+
+| Field | Type | Description |
+|---|---|---|
+| `.ID` | `tid.TID` | Unique item ID |
+| `.ParentID` | `tid.TID` | Parent container ID |
+| `.Type` | `string` | `"item"` or `"group"` |
+| `.Quantity` | `fxp.Int` | Quantity |
+| `.Description` | `string` | Item name/description |
+| `.ModifierNotes` | `string` | Modifier notes |
+| `.Notes` | `string` | Notes |
+| `.TechLevel` | `string` | Tech level |
+| `.LegalityClass` | `string` | Legality class |
+| `.Cost` | `fxp.Int` | Adjusted per-unit cost |
+| `.ExtendedCost` | `fxp.Int` | Extended cost (cost × quantity) |
+| `.Weight` | `string` | Formatted per-unit weight |
+| `.ExtendedWeight` | `string` | Formatted extended weight |
+| `.Equipped` | `bool` | Whether the item is equipped (carried items only) |
+| `.Uses` | `int` | Remaining uses |
+| `.MaxUses` | `int` | Maximum uses |
+| `.Depth` | `int` | Nesting depth |
+
+The totals are available at:
+
+| Field | Description |
+|---|---|
+| `.Equipment.CarriedValue` | Total value of carried equipment |
+| `.Equipment.CarriedWeight` | Formatted total carried weight |
+| `.Equipment.OtherValue` | Total value of non-carried equipment |
+
+### Weapons
+
+`.MeleeWeapons` and `.RangedWeapons` are flat slices. Melee entries:
+
+| Field | Description |
+|---|---|
+| `.Description` | Weapon name |
+| `.Notes` | Notes |
+| `.Usage` | Usage mode |
+| `.Level` | Skill level (`fxp.Int`) |
+| `.Damage` | Damage string |
+| `.Parry` / `.ParryParts` | Parry value (string and structured) |
+| `.Block` / `.BlockParts` | Block value |
+| `.Reach` / `.ReachParts` | Reach string and structured parts |
+| `.Strength` / `.StrengthParts` | Minimum ST requirement |
+
+Ranged entries replace parry/block/reach with:
+
+| Field | Description |
+|---|---|
+| `.Accuracy` / `.AccuracyParts` | Accuracy value |
+| `.Range` / `.RangeParts` | Range string and structured parts |
+| `.RateOfFire` / `.RateOfFireParts` | Rate of fire |
+| `.Shots` / `.ShotsParts` | Shots |
+| `.Bulk` / `.BulkParts` | Bulk |
+| `.Recoil` / `.RecoilParts` | Recoil |
+
+### Reactions and conditional modifiers
+
+`.Reactions` and `.ConditionalModifiers` are slices where each entry has:
+
+| Field | Description |
+|---|---|
+| `.ID` | Unique ID |
+| `.Total` | Total modifier value (`fxp.Int`) |
+| `.Situation` | Description of the situation |
+| `.Sources` | Slice of `{ Source string; Amount fxp.Int }` entries |
+
+### Body type and hit locations
+
+`.BodyType.Name` gives the body type name. `.BodyType.Locations` is a flat slice of hit locations:
+
+| Field | Description |
+|---|---|
+| `.RollRange` | Dice roll range (e.g. `9-10`) |
+| `.Where` | Location name |
+| `.Penalty` | Hit penalty |
+| `.DR` | DR value string |
+| `.Notes` | DR tooltip notes |
+| `.Depth` | Nesting depth for sub-tables |
+
+### Page geometry
+
+`.Page` exposes the formatted page dimensions used by the sheet:
+
+| Field | Description |
+|---|---|
+| `.Page.Width` | CSS width string (e.g. `8.5in`) |
+| `.Page.Height` | CSS height string |
+| `.Page.Margins.Top` | Top margin CSS string |
+| `.Page.Margins.Left` | Left margin CSS string |
+| `.Page.Margins.Bottom` | Bottom margin CSS string |
+| `.Page.Margins.Right` | Right margin CSS string |
+
+`.GridTemplate` is a `template.CSS` string containing the CSS grid template for laying out sheet blocks, suitable for direct use in an HTML `<style>` block.
+
+## Portrait embedding
+
+When the character has a portrait image, `.EmbeddedPortraitDataURL` is populated with a `data:` URI of the form:
+
+```
+data:<mime-type>;base64,<base64-encoded-image>
+```
+
+Use it directly in an `<img>` tag:
+
+```html
+{{if .EmbeddedPortraitDataURL}}
+<img src="{{.EmbeddedPortraitDataURL}}" alt="Portrait">
+{{end}}
+```
+
+Because this field is of type `template.URL`, `html/template` does **not** escape it, so it is safe to use in a `src` attribute without a `noescape` wrapper.
+
+## HTML vs text templates
+
+<Tabs>
+  <Tab title="HTML template">
+    Start the file with `GCS HTML Template v1`. GCS parses it with Go's `html/template` package, which automatically escapes all string values interpolated with `{{.Field}}` to prevent XSS. Use this for any output intended to be opened in a browser.
+
+    ```html
+    GCS HTML Template v1
+    <!DOCTYPE html>
+    <html>
+    <head><title>{{.Name}}</title></head>
+    <body>
+      <h1>{{.Name}}</h1>
+      <p>Player: {{.Player}}</p>
+      {{if .EmbeddedPortraitDataURL}}
+      <img src="{{.EmbeddedPortraitDataURL}}" alt="Portrait">
+      {{end}}
+      <h2>Skills</h2>
+      <ul>
+      {{range .Skills}}
+        {{if eq .Type "item"}}
+        <li>{{.Description}} — {{.Level}}</li>
+        {{end}}
+      {{end}}
+      </ul>
+    </body>
+    </html>
+    ```
+  </Tab>
+  <Tab title="Text template">
+    Start the file with `GCS Text Template v1`. GCS parses it with Go's `text/template` package. Values are written verbatim with no HTML escaping — suitable for CSV, Markdown, plain text, or any non-HTML format.
+
+    ```
+    GCS Text Template v1
+    Character: {{.Name}}
+    Player:    {{.Player}}
+    Points:    {{numberToInt .Points.Total}}
+
+    == Skills ==
+    {{range .Skills}}{{if eq .Type "item"}}{{.Description}} ({{.Difficulty}}) {{.Level}}
+    {{end}}{{end}}
+    ```
+  </Tab>
+</Tabs>
+
+## Built-in template functions
+
+GCS registers these additional functions for use in both HTML and text templates:
+
+| Function | Signature | Description |
+|---|---|---|
+| `caselessEqual` | `(a, b string) bool` | Case-insensitive string comparison |
+| `contains` | `(s, substr string) bool` | Reports whether `substr` is in `s` |
+| `hasPrefix` | `(s, prefix string) bool` | Reports whether `s` starts with `prefix` |
+| `hasSuffix` | `(s, suffix string) bool` | Reports whether `s` ends with `suffix` |
+| `indexStr` | `(s, substr string) int` | Index of first occurrence of `substr` in `s` |
+| `join` | `(elems []string, sep string) string` | Joins a string slice |
+| `lastIndexStr` | `(s, substr string) int` | Index of last occurrence |
+| `lower` | `(s string) string` | Converts to lower case |
+| `numberFrom` | `(value any) fxp.Int` | Parses int, float64, or string to `fxp.Int` |
+| `numberToFloat` | `(n fxp.Int) float64` | Converts `fxp.Int` to float64 |
+| `numberToInt` | `(n fxp.Int) int` | Converts `fxp.Int` to int |
+| `repeat` | `(s string, count int) string` | Repeats a string |
+| `replace` | `(s, old, new string) string` | Replaces all occurrences |
+| `split` | `(s, sep string) []string` | Splits a string |
+| `splitN` | `(s, sep string, n int) []string` | Splits at most n substrings |
+| `trim` | `(s string) string` | Trims leading/trailing whitespace |
+| `trimPrefix` | `(s, prefix string) string` | Trims a leading prefix |
+| `trimSuffix` | `(s, suffix string) string` | Trims a trailing suffix |
+| `upper` | `(s string) string` | Converts to upper case |
+
+## Legacy template format
+
+Templates that do **not** begin with `GCS HTML Template v1` or `GCS Text Template v1` are processed by the legacy key-substitution exporter, which is compatible with templates written for the original Java-based GCS.
+
+Legacy templates use `@KEY` placeholders rather than Go template syntax. For example:
+
+```
+Character: @NAME
+Player: @PLAYER
+ST: @ST  DX: @DX  IQ: @IQ  HT: @HT
+@ADVANTAGES_LOOP_START
+  @DESCRIPTION (@POINTS pts)
+@ADVANTAGES_LOOP_END
+```
+
+<Tip>
+  New templates should prefer `GCS HTML Template v1` or `GCS Text Template v1` for full access to the rich data structures and the expressiveness of Go templates. The legacy format is maintained for backwards compatibility only.
+</Tip>
+
+<CardGroup cols={2}>
+  <Card title="Batch operations" href="/export/batch-operations">
+    Run text exports and other operations on many files at once from the command line.
+  </Card>
+  <Card title="CLI reference" href="/reference/cli">
+    Full list of GCS command-line flags and options.
+  </Card>
+</CardGroup>

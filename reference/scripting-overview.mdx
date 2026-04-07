@@ -1,0 +1,187 @@
+---
+title: "Scripting overview"
+description: "How GCS embeds a JavaScript engine for dynamic calculations in character sheets."
+---
+
+GCS embeds the [goja](https://github.com/dop251/goja) JavaScript engine, which lets you write dynamic expressions
+directly inside text fields. Whenever GCS resolves a text field that contains `<script>...</script>` tags, the
+enclosed JavaScript is evaluated and its return value is substituted into the surrounding text.
+
+## Where scripts are used
+
+You can embed script expressions in any text field that GCS resolves for display, including:
+
+- **Trait descriptions** — notes and secondary text on advantages, disadvantages, and perks
+- **Skill and spell notes** — any secondary-text field
+- **Feature expressions** — bonus amounts, DR values, and similar numeric feature fields
+- **Prerequisite scripts** — a dedicated **Script** prerequisite type that returns a boolean result
+
+A single field may contain multiple `<script>...</script>` blocks alongside plain text. Each block is evaluated
+independently and its string result is spliced in place.
+
+## Script execution model
+
+Each script body is compiled once and cached for the session. Scripts run inside an anonymous strict-mode function
+wrapper, so variables you declare do not leak into the global scope.
+
+A pool of JavaScript runtimes (`vmPool`) is shared across all script evaluations. Each runtime has the global
+built-ins pre-registered; per-evaluation context (such as `self` and `entity`) is injected as lazy accessor
+properties that are only resolved if your script actually reads them.
+
+### Execution timeout
+
+The maximum wall-clock time a single script may run is controlled by the **Permitted per-script execution time**
+setting in **Edit → Settings → General**. If a script exceeds this limit it is interrupted and the result is
+replaced with the message:
+
+```
+script execution timed out (limited to N seconds)
+```
+
+### Circular reference guard
+
+Script resolution is re-entrant up to a depth of 20. If a script triggers another resolution that eventually circles
+back to itself, evaluation stops and the result contains:
+
+```
+script resolution exceeded maximum depth (possible circular reference)
+```
+
+### Result caching
+
+Resolved script results are cached per entity for the lifetime of a single recalculation pass. Calling
+`DiscardGlobalResolveCache()` clears the global cache (used when no entity context is available).
+
+## Available global variables
+
+Every script has access to the following globals, in addition to the standard JavaScript built-ins.
+
+| Name | Type | Description |
+|---|---|---|
+| `entity` | Object | The character sheet being evaluated. See [Entity object](/reference/scripting-objects#entity). Always present; `.exists` is `false` when no entity is loaded. |
+| `self` | Object | The item whose field is being evaluated (trait, skill, spell, equipment, weapon, or attribute). Available only when a contextual owner exists. |
+| `$<attrID>` | Object | Each attribute on the entity is also injected as `$st`, `$dx`, `$iq`, etc. These are [Attribute objects](/reference/scripting-objects#attribute). |
+| `console` | Object | Logging sink. Messages go to the GCS log file. |
+| `dice` | Object | Dice utilities: parse, combine, and roll dice expressions. |
+| `iff` | Function | Ternary helper: `iff(condition, trueVal, falseVal)`. |
+| `measure` | Object | Unit-conversion helpers for length and weight. |
+| `Math.exp2` | Function | Returns 2 raised to the power of `n`. |
+| `signedValue` | Function | Formats a number with an explicit sign: `signedValue(3)` → `"+3"`. |
+| `formatNum` | Function | Formats a number with optional commas and sign: `formatNum(n, withCommas, withSign)`. |
+
+<Note>
+All scripting objects are **read-only**. Attempting to assign a property on `self`, `entity`, or any other scripting
+object has no effect.
+</Note>
+
+## The `self` variable
+
+`self` is set to a scripting wrapper for the item that owns the field being evaluated:
+
+| Context | `self` type |
+|---|---|
+| Trait field | [Trait object](/reference/scripting-objects#trait) |
+| Skill field | [Skill object](/reference/scripting-objects#skill) |
+| Spell field | [Spell object](/reference/scripting-objects#spell) |
+| Equipment field | [Equipment object](/reference/scripting-objects#equipment) |
+| Weapon field | [Weapon object](/reference/scripting-objects#weapon) |
+| Attribute expression | [Attribute object](/reference/scripting-objects#attribute) |
+| TraitModifier field | [TraitModifier object](/reference/scripting-objects#traitmodifier) |
+| EquipmentModifier field | [EquipmentModifier object](/reference/scripting-objects#equipmentmodifier) |
+
+If there is no owning item (for example, a standalone text resolve), `self` is not defined.
+
+## Name mapping
+
+Go struct field names and method names are mapped to camelCase for JavaScript. The rules are:
+
+- `ID` → `id`
+- `ParentID` → `parentID`
+- All other names → first letter lowercased (`FullName` → `fullName`)
+
+This is applied uniformly by the `scriptNameMapper` registered on each runtime.
+
+## Script prerequisite type
+
+The **Script** prerequisite type lets you write arbitrary JavaScript to decide whether a prerequisite is satisfied.
+Your script body should evaluate to a **truthy value to indicate failure** (with the truthy string used as the
+tooltip message shown to the user), or an **empty string / falsy value to indicate success**.
+
+<Warning>
+The script prereq convention is inverted from what you might expect: return an empty string (or `""`) when the
+prerequisite **passes**, and return a non-empty failure message when it **fails**.
+</Warning>
+
+The `self` variable inside a prereq script is set to the item that owns the prerequisite list (trait, skill, spell,
+or equipment).
+
+```javascript
+// Passes when the character has ST 12 or higher.
+// Returns "" on success, or an error message on failure.
+$st.maximum >= 12 ? "" : "Requires ST 12"
+```
+
+## Error handling
+
+Script errors (compile errors, runtime exceptions, and type-conversion failures) are logged via `slog` and the
+error message is substituted as the script's result. Scripts **never silently swallow errors** — if something goes
+wrong you will see a descriptive string in the field where the result would normally appear, and a corresponding
+entry in the GCS log.
+
+## Examples
+
+### Numeric feature expression
+
+Use `self` to compute a feature bonus based on the owning trait's level:
+
+```javascript
+// In a "bonus per level" feature on a leveled trait.
+self.level * 2
+```
+
+### Conditional text in a description
+
+Mix plain text and script blocks in a single field:
+
+```
+Your lifting ST is <script>entity.liftingStrength</script> lbs basic lift.
+```
+
+### Accessing an attribute directly
+
+```javascript
+// The $st shorthand gives you the ST attribute object.
+$st.maximum
+```
+
+### Checking for a trait
+
+```javascript
+// Returns true if the character has "Night Vision" (any level).
+entity.hasTrait("Night Vision")
+```
+
+### Script prereq using attribute lookup
+
+```javascript
+// Prereq: character must have IQ 11+
+entity.attribute("iq").maximum >= 11 ? "" : "Requires IQ 11+"
+```
+
+### Using iff for a ternary
+
+```javascript
+iff($ht.maximum >= 12, "sturdy", "average")
+```
+
+### Dice utilities
+
+```javascript
+// Roll 3d6 and return the result as a string.
+dice.roll("3d6", false)
+```
+
+<Tip>
+Keep script bodies short and side-effect-free. Because results are cached, a script that relies on mutable state
+may return stale values within the same recalculation pass.
+</Tip>

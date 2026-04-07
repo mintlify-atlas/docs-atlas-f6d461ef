@@ -1,0 +1,150 @@
+---
+title: "Command-line interface"
+description: "Run GCS from a terminal, convert files, export sheets, and sync character data with library sources."
+---
+
+GCS can be launched from the terminal. Without any special flags it opens the graphical interface, optionally loading
+the files you pass as arguments. Several flags switch GCS into a headless batch mode that processes files and exits
+without opening a window.
+
+## Usage
+
+```bash
+gcs [options] [file]...
+```
+
+One or more `.gcs`, `.gct`, or `.campaign` files may be specified. GCS opens each file at startup when running in
+GUI mode, or processes them when a batch flag is given.
+
+## Flags
+
+<AccordionGroup>
+  <Accordion title="--settings &lt;file&gt;">
+    Load and save application settings from the specified file path instead of the default location in the user's
+    application data directory.
+
+    ```bash
+    gcs --settings ./portable-settings.json character.gcs
+    ```
+
+    This is useful for portable installations or when you want separate settings profiles. The default path is
+    constructed from the operating system's application data directory plus the application command name followed by
+    `_prefs.json`.
+  </Accordion>
+
+  <Accordion title="--text &lt;file&gt;">
+    Export one or more character sheets using a text or HTML template file. GCS renders each `.gcs` file through the
+    template and writes the output, then exits.
+
+    At least one `.gcs` file must be specified alongside this flag.
+
+    ```bash
+    gcs --text sheet-template.html character.gcs
+    gcs --text my-template.txt hero.gcs sidekick.gcs
+    ```
+  </Accordion>
+
+  <Accordion title="--convert">
+    Convert all specified files to the current GCS data format. If a directory path is given, GCS traverses it
+    recursively and converts every GCS-format file found. After all files are processed, GCS exits with code 0.
+
+    ```bash
+    gcs --convert ./my-characters/
+    gcs --convert hero.gcs sidekick.gcs
+    ```
+
+    <Warning>
+    `--convert` and `--sync` cannot be used together. GCS exits with an error message if both flags are present.
+    </Warning>
+  </Accordion>
+
+  <Accordion title="--sync">
+    Sync character sheets (`.gcs`) and template files (`.gct`) with their library sources. If a directory path is
+    given, GCS traverses it recursively. After all files are processed, GCS exits with code 0.
+
+    ```bash
+    gcs --sync ./campaign/
+    gcs --sync hero.gcs
+    ```
+
+    <Warning>
+    `--convert` and `--sync` cannot be used together. GCS exits with an error message if both flags are present.
+    </Warning>
+  </Accordion>
+
+  <Accordion title="--version">
+    Print version information and exit.
+
+    ```bash
+    gcs --version
+    ```
+  </Accordion>
+
+  <Accordion title="--help">
+    Print usage information and exit.
+
+    ```bash
+    gcs --help
+    ```
+  </Accordion>
+
+  <Accordion title="Logging flags">
+    GCS exposes structured logging flags from the `xslog` configuration. These control where log output is written
+    and at what verbosity level.
+
+    | Flag | Description |
+    |---|---|
+    | `--log-file <path>` | Write log output to the specified file path. |
+
+    Additional logging flags may be available depending on the build. Run `gcs --help` to see the current list.
+
+    ```bash
+    gcs --log-file ./gcs-debug.log character.gcs
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## File arguments
+
+Pass zero or more file paths after the flags. In GUI mode, GCS opens each file in a separate window. In batch mode
+(`--convert`, `--sync`, `--text`), the file list is the set of items to process.
+
+Directories are accepted by `--convert` and `--sync`; they are traversed recursively.
+
+## Exit codes
+
+| Code | Meaning |
+|---|---|
+| `0` | Success. |
+| Non-zero | An error occurred; GCS prints a message to stderr before exiting. |
+
+## Examples
+
+```bash
+# Open GCS normally with a specific character sheet
+gcs character.gcs
+
+# Open multiple sheets at startup
+gcs hero.gcs sidekick.gcs campaign.campaign
+
+# Convert all sheets in a directory tree to the current format
+gcs --convert ./my-characters/
+
+# Export a character using an HTML template
+gcs --text sheet-template.html character.gcs
+
+# Sync character sheets and templates with library sources
+gcs --sync ./campaign/
+
+# Use a portable settings file alongside the executable
+gcs --settings ./portable-settings.json character.gcs
+
+# Write log output to a file for debugging
+gcs --log-file ./debug.log character.gcs
+```
+
+<Tip>
+When you distribute GCS in a portable folder, place a file named `gcs_prefs.json` (or the equivalent for your
+platform's app command name) in the same directory as the executable. GCS will automatically use it as the settings
+file without requiring the `--settings` flag.
+</Tip>

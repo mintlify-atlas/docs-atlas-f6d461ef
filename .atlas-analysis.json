@@ -1,0 +1,120 @@
+{
+  "projectType": "general",
+  "projectName": "GURPS Character Sheet",
+  "projectDescription": "A standalone, interactive desktop application for creating and managing characters for the GURPS Fourth Edition roleplaying game system.",
+  "theme": "almond",
+  "primaryColor": "#219165",
+  "lightColor": "#a1beab",
+  "darkColor": "#504847",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "installation",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Characters",
+            "pages": [
+              "characters/overview",
+              "characters/traits",
+              "characters/skills-and-spells",
+              "characters/equipment"
+            ]
+          },
+          {
+            "group": "Libraries & Data",
+            "pages": [
+              "libraries/overview",
+              "libraries/managing-libraries",
+              "libraries/file-formats"
+            ]
+          },
+          {
+            "group": "Export & Sharing",
+            "pages": [
+              "export/pdf-export",
+              "export/text-html-export",
+              "export/batch-operations"
+            ]
+          },
+          {
+            "group": "Customization",
+            "pages": [
+              "customization/settings",
+              "customization/sheet-settings",
+              "customization/attributes-and-body",
+              "customization/scripting"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Reference",
+        "groups": [
+          {
+            "group": "Data Model",
+            "pages": [
+              "reference/entity",
+              "reference/traits-and-modifiers",
+              "reference/skills-and-spells-ref",
+              "reference/weapons",
+              "reference/equipment-ref"
+            ]
+          },
+          {
+            "group": "Scripting API",
+            "pages": [
+              "reference/scripting-overview",
+              "reference/scripting-objects"
+            ]
+          },
+          {
+            "group": "Command-Line Interface",
+            "pages": [
+              "reference/cli"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Full GURPS Fourth Edition character creation and management",
+    "Interactive character sheet editor with real-time point calculations",
+    "Traits, advantages, disadvantages, and quirks management",
+    "Skills, spells, and techniques with automatic level calculations",
+    "Equipment and loot tracking with encumbrance calculations",
+    "PDF and HTML/text export with customizable templates",
+    "Library system for reusable traits, skills, spells, and equipment",
+    "JavaScript-based scripting for custom prerequisites and calculations",
+    "Campaign management for grouping related sheets",
+    "Batch file conversion and synchronization via CLI",
+    "Cross-platform support: macOS, Windows, Linux",
+    "Internationalization (i18n) support"
+  ],
+  "publicApiSurface": [
+    "gurps.Entity — core character data model",
+    "gurps.Trait / gurps.TraitModifier — advantages, disadvantages, quirks",
+    "gurps.Skill / gurps.Spell — skills and spells with level computation",
+    "gurps.Equipment / gurps.EquipmentModifier — gear and modifiers",
+    "gurps.Weapon — melee and ranged weapon stats",
+    "gurps.AttributeDefs / gurps.Attributes — customizable character attributes",
+    "gurps.Body / gurps.HitLocation — hit location tables",
+    "gurps.Library / gurps.Libraries — content library management",
+    "gurps.Settings / gurps.GlobalSettings() — application-wide settings",
+    "gurps.SheetSettings — per-sheet configuration",
+    "gurps.ExportSheets() — text/HTML template-based export",
+    "gurps.Convert() — batch file format conversion",
+    "gurps.SyncSheetsAndTemplates() — sync sheets with library sources",
+    "gurps.FileInfo / gurps.KnownFileTypes — file type registry",
+    "model/fxp.Int — fixed-point numeric type used throughout",
+    "CLI flags: --convert, --sync, --text, --settings"
+  ]
+}

@@ -1,0 +1,134 @@
+---
+title: "Batch operations"
+description: "Run GCS non-interactively from the command line to convert files to the current format, sync sheets with library sources, or export sheets to text and HTML in bulk."
+---
+
+GCS includes three non-GUI batch modes that let you process many files at once without opening the application window. All three are activated by command-line flags and cause GCS to exit automatically when finished.
+
+## Common flags
+
+These flags apply to all invocations, including batch modes:
+
+| Flag | Argument | Description |
+|---|---|---|
+| `--settings` | `<file>` | Load and save settings from a custom path instead of the default app-data location |
+| `--log` | `<file>` | Write log output to the specified file |
+
+## `--convert`: convert files to the current format
+
+The `--convert` flag reads every GCS file you specify (or finds recursively in any directories you specify) and re-saves it using the current JSON schema version. This is useful after upgrading GCS to ensure all your files are on the latest format.
+
+```bash
+gcs --convert file1.gcs my-library/
+```
+
+**What it does:**
+
+1. Collects all paths, deduplicating and resolving symlinks.
+2. Walks any directories recursively, collecting every file with a recognised GCS extension (`.gcs`, `.adq`, `.eqp`, `.skl`, `.spl`, `.not`, `.gct`, `.gca`, `.gcb`, `.gcp`, `.refs`, `.color`, `.font`, `.keys`, `.settings`, and others).
+3. Loads each file using the appropriate loader, then immediately saves it back to the same path using the current serialiser.
+4. Prints a progress line for each file and a summary count when finished.
+5. Exits with a zero exit code on success, or a non-zero code with an error message if any file fails.
+
+**Supported file types include:**
+
+- Character sheets (`.gcs`)
+- Templates (`.gct`)
+- Traits, trait modifiers, equipment, equipment modifiers, skills, spells, notes libraries
+- Ancestries, attribute definitions, body type definitions
+- Page reference settings, sheet settings, general settings, colour settings, font settings, key binding settings
+
+<Note>
+  Files whose extensions GCS does not recognise are silently ignored. Hidden files and directories (names beginning with `.`) are also skipped.
+</Note>
+
+## `--sync`: sync sheets and templates with library sources
+
+The `--sync` flag resolves the **source references** embedded in character sheets (`.gcs`) and templates (`.gct`) against the current state of the loaded libraries. This brings locally edited copies of library items back into sync with their upstream definitions.
+
+```bash
+gcs --sync my-character.gcs campaigns/
+```
+
+**What it does:**
+
+1. Collects `.gcs` and `.gct` files from all specified paths and directories, recursively.
+2. For each template: loads it, calls `SyncWithLibrarySources()` and `EnsureAttachments()`, then saves it.
+3. For each character sheet: loads it, calls `SyncWithLibrarySources()` and `Recalculate()`, then saves it.
+4. Prints a progress line per file and a summary count on completion.
+5. Exits automatically.
+
+<Warning>
+  `--convert` and `--sync` are mutually exclusive. Passing both flags causes GCS to print an error message and exit immediately without processing any files.
+</Warning>
+
+## `--text`: export sheets to text or HTML
+
+The `--text` flag exports one or more character sheets through a template file and writes the result alongside each sheet file.
+
+```bash
+gcs --text <template-file> sheet1.gcs [sheet2.gcs ...]
+```
+
+**Arguments:**
+
+| Argument | Description |
+|---|---|
+| `<template-file>` | Path to a GCS template file. Must start with `GCS HTML Template v1` or `GCS Text Template v1` on its first line (or be a legacy `@KEY` template). |
+| `sheet1.gcs …` | One or more `.gcs` character sheet files to export. |
+
+**What it does:**
+
+1. Iterates over every file in the argument list.
+2. Skips any file that is not exportable (currently only `.gcs` character sheets are exportable).
+3. Loads the sheet, recalculates all derived values, and executes the template.
+4. Writes the output to a file with the same base name as the sheet and the same extension as the template. For example, `my-character.gcs` exported through `sheet.html.tmpl` produces `my-character.html` in the same directory.
+5. Exits with a zero exit code after all sheets are processed.
+
+```bash
+# Export two characters using an HTML template
+gcs --text templates/character-sheet.html my-fighter.gcs my-wizard.gcs
+
+# Export all sheets in a directory using a text template
+gcs --text templates/summary.txt campaigns/
+```
+
+<Note>
+  At least one sheet file must be listed after the template path. If no files are provided GCS prints `"No files to process."` and exits.
+</Note>
+
+## Using a custom settings file
+
+All three batch modes (and the GUI) accept `--settings` to point GCS at a non-default preferences file:
+
+```bash
+gcs --settings /shared/team-prefs.json --convert library/
+```
+
+This is useful in CI/CD pipelines or shared environments where you want consistent settings without touching each user's personal app-data directory.
+
+GCS also automatically checks for a `gcs_prefs.json` file in the same directory as the executable and uses that in preference to the app-data location if it exists — no flag required.
+
+## Combining flags
+
+| Combination | Result |
+|---|---|
+| `--convert` only | Convert all matched files and exit |
+| `--sync` only | Sync all matched sheets/templates and exit |
+| `--text <tmpl>` only | Export all listed sheets and exit |
+| `--convert` + `--sync` | **Error** — mutually exclusive |
+| Any batch flag + `--settings` | Uses the specified settings file |
+| Any batch flag + `--log` | Writes log output to the specified file |
+
+## Exit codes
+
+GCS exits with code `0` on success. Any unrecoverable error (a file that cannot be read, a template parse failure, an I/O error during save) prints an error message to stderr and exits with a non-zero code.
+
+<CardGroup cols={2}>
+  <Card title="Text and HTML export" href="/export/text-html-export">
+    Learn how to write GCS templates and understand the full character data available to them.
+  </Card>
+  <Card title="PDF export" href="/export/pdf-export">
+    Export the rendered character sheet layout to PDF from the GUI.
+  </Card>
+</CardGroup>

@@ -1,0 +1,338 @@
+---
+title: "Skills and spells reference"
+description: "Complete reference for the Skill and Spell data models, including attribute/difficulty pairings, skill defaults, and spell-specific fields."
+---
+
+Skills and spells share a common structural pattern in GCS: both store an `AttributeDifficulty`, accumulate character points, resolve to a numeric level, and can default to other skills. Spells extend the skill model with college, power source, and casting information.
+
+---
+
+## Skill fields
+
+### Identity
+
+<ResponseField name="id" type="tid.TID" required>
+  Unique identifier. The first byte encodes whether this is a plain skill (`kinds.Skill`) or a container (`kinds.SkillContainer`).
+</ResponseField>
+
+<ResponseField name="third_party" type="map[string]any">
+  Arbitrary data for VTT integrations. Ignored by GCS.
+</ResponseField>
+
+<ResponseField name="children" type="[]*Skill">
+  Child skills or techniques. Present only when this node is a skill container.
+</ResponseField>
+
+### Common fields (SkillSyncData)
+
+<ResponseField name="name" type="string">
+  Skill name (e.g. `"Broadsword"`, `"Stealth"`).
+</ResponseField>
+
+<ResponseField name="reference" type="string">
+  Book and page reference (e.g. `"B208"`).
+</ResponseField>
+
+<ResponseField name="local_notes" type="string">
+  Notes shown beneath the skill name on the character sheet.
+</ResponseField>
+
+<ResponseField name="tags" type="[]string">
+  Category tags for filtering (e.g. `["Combat", "Melee Combat", "Weapon"]`).
+</ResponseField>
+
+### Non-container sync fields (SkillNonContainerOnlySyncData)
+
+<ResponseField name="specialization" type="string">
+  Specialisation for skills that require or allow one (e.g. `"Pistol"` for Guns, `"English"` for Language).
+</ResponseField>
+
+<ResponseField name="difficulty" type="AttributeDifficulty">
+  The controlling attribute combined with a difficulty class. See [AttributeDifficulty](#attributedifficulty).
+</ResponseField>
+
+<ResponseField name="encumbrance_penalty_multiplier" type="fxp.Int">
+  Multiplied by the current encumbrance penalty to produce an additional penalty to this skill's effective level. Most skills use `0` (no penalty) or `1` (full penalty).
+</ResponseField>
+
+<ResponseField name="defaults" type="[]*SkillDefault">
+  List of defaults this skill can fall back to when no points are invested. See [SkillDefault](#skilldefault).
+</ResponseField>
+
+<ResponseField name="default" type="*SkillDefault">
+  For **techniques** only: the underlying skill or attribute this technique defaults from.
+</ResponseField>
+
+<ResponseField name="limit" type="*fxp.Int">
+  For **techniques** only: maximum number of points above the default the technique can reach.
+</ResponseField>
+
+<ResponseField name="prereqs" type="*PrereqList">
+  Prerequisite conditions for this skill.
+</ResponseField>
+
+<ResponseField name="weapons" type="[]*Weapon">
+  Weapons associated with this skill. See [Weapons](/reference/weapons).
+</ResponseField>
+
+<ResponseField name="features" type="Features">
+  Feature bonuses granted by this skill (rare; mostly used on racial skills).
+</ResponseField>
+
+### Non-container edit fields (SkillNonContainerOnlyEditData)
+
+<ResponseField name="tech_level" type="*string">
+  If set, restricts this skill to characters whose tech level is at or above this value (e.g. `"5"`). A pointer so that absence (`null`) and explicit empty string can be distinguished.
+</ResponseField>
+
+<ResponseField name="points" type="fxp.Int">
+  Character points invested in this skill.
+</ResponseField>
+
+<ResponseField name="defaulted_from" type="*SkillDefault">
+  Populated at runtime when a skill level is resolved through a default rather than purchased points.
+</ResponseField>
+
+<ResponseField name="study" type="[]*Study">
+  Study sessions logged toward improving this skill.
+</ResponseField>
+
+<ResponseField name="study_hours_needed" type="study.Level">
+  Study-hours threshold for the next improvement.
+</ResponseField>
+
+### Edit fields (SkillEditData)
+
+<ResponseField name="vtt_notes" type="string">
+  Notes for VTT systems.
+</ResponseField>
+
+<ResponseField name="replacements" type="map[string]string">
+  Name-substitution map for template instantiation.
+</ResponseField>
+
+### Container-only fields
+
+<ResponseField name="template_picker" type="*TemplatePicker">
+  Controls how many child skills a player may choose from this container.
+</ResponseField>
+
+---
+
+## AttributeDifficulty
+
+`AttributeDifficulty` encodes the combination of controlling attribute and difficulty class as a single value serialised to a string like `"dx/A"`.
+
+```go
+type AttributeDifficulty struct {
+    Attribute  string          // e.g. "dx", "iq", "per"
+    Difficulty difficulty.Level
+}
+```
+
+### Difficulty levels
+
+| Value | JSON key | Points to reach attribute level |
+|-------|----------|----------------------------------|
+| Easy | `"e"` or `"E"` | 1 pt → attribute; +1 per additional pt |
+| Average | `"a"` or `"A"` | 2 pts → attribute−1; 4 pts → attribute |
+| Hard | `"h"` or `"H"` | 2 pts → attribute−2; 4 pts → attribute |
+| Very Hard | `"vh"` or `"VH"` | 2 pts → attribute−3; 4 pts → attribute |
+| Wildcard | `"w"` or `"W"` | 12 pts per level; covers an entire category of skills |
+
+---
+
+## SkillDefault
+
+`SkillDefault` defines a fallback resolution path used when a character has no points in a skill.
+
+<ResponseField name="type" type="string" required>
+  The default source type. Common values:
+
+  | Value | Source |
+  |-------|--------|
+  | `"skill"` | Another named skill |
+  | `"parry"` | Parry score of a named skill |
+  | `"block"` | Block score of a named skill |
+  | `"dx"` | DX attribute |
+  | `"iq"` | IQ attribute |
+  | `"st"` | ST attribute |
+  | `"per"` | Perception attribute |
+  | `"will"` | Will attribute |
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Skill name for skill-based defaults (when `type` is `"skill"`, `"parry"`, or `"block"`).
+</ResponseField>
+
+<ResponseField name="specialization" type="string">
+  Skill specialisation for skill-based defaults.
+</ResponseField>
+
+<ResponseField name="modifier" type="fxp.Int">
+  Numeric modifier applied on top of the resolved default value (e.g. `−4`).
+</ResponseField>
+
+<ResponseField name="level" type="fxp.Int">
+  Computed resolved level. Populated at runtime; not stored in the file.
+</ResponseField>
+
+<ResponseField name="adjusted_level" type="fxp.Int">
+  Level after applying the modifier. Populated at runtime.
+</ResponseField>
+
+<ResponseField name="when_tl" type="criteria.Number">
+  Optional tech-level condition that must be met for this default to be applicable.
+</ResponseField>
+
+---
+
+## Spell fields
+
+`SpellData` mirrors `SkillData` in structure. The fields below are specific to spells; all `SkillSyncData` fields (`name`, `reference`, `local_notes`, `tags`) apply identically.
+
+### Non-container sync fields (SpellNonContainerOnlySyncData)
+
+<ResponseField name="difficulty" type="AttributeDifficulty">
+  Controlling attribute and difficulty. Most spells are `IQ/H`.
+</ResponseField>
+
+<ResponseField name="college" type="CollegeList">
+  One or more college names the spell belongs to (e.g. `["Body Control"]`, `["Fire", "Elemental"]`). Used for prerequisite counting.
+</ResponseField>
+
+<ResponseField name="power_source" type="string">
+  The power source for this spell (e.g. `"Arcane"`, `"Divine"`). Relevant to Magic Resistance and similar effects.
+</ResponseField>
+
+<ResponseField name="spell_class" type="string">
+  Spell class descriptor (e.g. `"Regular"`, `"Area"`, `"Blocking"`).
+</ResponseField>
+
+<ResponseField name="resist" type="string">
+  How the target resists (e.g. `"HT"`, `"Will"`, `"None"`).
+</ResponseField>
+
+<ResponseField name="casting_cost" type="string">
+  Energy cost to cast (e.g. `"3"`, `"1 to 6"`).
+</ResponseField>
+
+<ResponseField name="maintenance_cost" type="string">
+  Energy cost to maintain per interval (e.g. `"2"`, `"None"`).
+</ResponseField>
+
+<ResponseField name="casting_time" type="string">
+  Time required to cast (e.g. `"1 second"`, `"1 minute"`).
+</ResponseField>
+
+<ResponseField name="duration" type="string">
+  How long the effect lasts (e.g. `"1 minute"`, `"Permanent"`, `"Instant"`).
+</ResponseField>
+
+<ResponseField name="prereq_count" type="int">
+  Number of spells from the same college(s) that must be known before this spell can be learned.
+</ResponseField>
+
+<ResponseField name="prereqs" type="*PrereqList">
+  Explicit prerequisite conditions in addition to the spell count.
+</ResponseField>
+
+<ResponseField name="weapons" type="[]*Weapon">
+  Weapons granted by this spell (e.g. a Weapon spell).
+</ResponseField>
+
+<ResponseField name="base_skill" type="string">
+  For ritual magic spells: the underlying ritual skill name.
+</ResponseField>
+
+<ResponseField name="item" type="string">
+  Item required to cast this spell, if any.
+</ResponseField>
+
+### Non-container edit fields (SpellNonContainerOnlyEditData)
+
+<ResponseField name="tech_level" type="*string">
+  Tech-level restriction, same semantics as for skills.
+</ResponseField>
+
+<ResponseField name="points" type="fxp.Int">
+  Character points invested in this spell.
+</ResponseField>
+
+<ResponseField name="study" type="[]*Study">
+  Study sessions logged toward improving this spell.
+</ResponseField>
+
+<ResponseField name="study_hours_needed" type="study.Level">
+  Study-hours threshold for the next improvement.
+</ResponseField>
+
+---
+
+## Study
+
+The `Study` struct tracks a single study session used to accumulate improvements outside normal point expenditure.
+
+<ResponseField name="type" type="study.Type">
+  Kind of study undertaken.
+
+  | Value | Description |
+  |-------|-------------|
+  | `"self"` | Self-directed study without a teacher |
+  | `"job"` | On-the-job experience |
+  | `"teacher"` | Studying under an instructor |
+  | `"intensive"` | Intensive classroom or training environment |
+</ResponseField>
+
+<ResponseField name="hours" type="fxp.Int">
+  Hours logged in this study session.
+</ResponseField>
+
+<ResponseField name="note" type="string">
+  Free-form description of what was studied.
+</ResponseField>
+
+---
+
+## JSON examples
+
+### Skill
+
+```json
+{
+  "id": "Scts000AbCdEfGhI",
+  "name": "Broadsword",
+  "reference": "B208",
+  "tags": ["Combat", "Melee Combat", "Weapon"],
+  "difficulty": "dx/a",
+  "encumbrance_penalty_multiplier": 1,
+  "points": 4,
+  "defaults": [
+    { "type": "dx", "modifier": -5 },
+    { "type": "skill", "name": "Force Sword", "modifier": -4 },
+    { "type": "skill", "name": "Shortsword", "modifier": -2 }
+  ]
+}
+```
+
+### Spell
+
+```json
+{
+  "id": "Spcs000AbCdEfGhI",
+  "name": "Fireball",
+  "reference": "M109",
+  "tags": ["Fire"],
+  "difficulty": "iq/h",
+  "college": ["Fire", "Elemental"],
+  "power_source": "Arcane",
+  "spell_class": "Missile",
+  "resist": "Dodge",
+  "casting_cost": "1 to 3",
+  "maintenance_cost": "None",
+  "casting_time": "1 second",
+  "duration": "Instant",
+  "prereq_count": 2,
+  "points": 4
+}
+```

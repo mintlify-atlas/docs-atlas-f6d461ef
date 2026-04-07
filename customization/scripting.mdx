@@ -1,0 +1,282 @@
+---
+title: "Scripting"
+description: "Use embedded JavaScript expressions to drive dynamic calculations in attribute bases, pool thresholds, point costs, prerequisites, and feature bonuses."
+---
+
+GCS embeds a JavaScript engine ([goja](https://github.com/dop251/goja)) that evaluates expressions in many fields throughout the application. Scripting lets you express rules that depend on other character values without hardcoding formulas.
+
+## Where scripts appear
+
+Scripts can appear in any field that accepts an expression:
+
+- **Attribute base** — the starting value for an attribute (e.g., `$iq - 2` for Will)
+- **Pool threshold values** — the trigger point for HP/FP states (e.g., `round($hp / 3)`)
+- **Pool threshold explanations** — tooltip text that includes computed values
+- **Feature bonus formulas** — amounts that scale with a stat or level
+- **Prerequisite scripts** — gate a prerequisite with arbitrary logic (see [Script prerequisites](#script-prerequisites))
+
+## Script syntax
+
+In most fields that accept expressions, you can write a plain number or a JavaScript expression directly. In free-text fields (like notes), you must wrap scripts in `<script>` tags so GCS knows to evaluate them:
+
+```html
+Your current HP is <script>$hp.current</script> out of <script>$hp.maximum</script>.
+```
+
+Scripts inside `<script>...</script>` tags replace that region with the result of the expression. Multiple script regions can appear in a single field.
+
+In expression-only fields (such as attribute base or threshold value), write JavaScript directly without the tags:
+
+```javascript
+$iq - 2
+```
+
+## Global objects and functions
+
+The following identifiers are available in every script context.
+
+### `console`
+
+Use `console.log(...)` to emit informational messages and `console.error(...)` for errors. Output goes to the GCS application log.
+
+```javascript
+console.log("Resolving attribute base for", $st.name);
+```
+
+### `dice`
+
+The `dice` object provides helpers for working with GURPS dice expressions.
+
+| Method / property | Description |
+|---|---|
+| `dice.from(count, sides, modifier, multiplier)` | Builds a dice string (e.g., `dice.from(2, 6, 1, 1)` → `"2d6+1"`). |
+| `dice.add(left, right)` | Adds two dice strings together (sides must match). |
+| `dice.subtract(left, right)` | Subtracts one dice string from another (sides must match). |
+| `dice.count(spec)` | Returns the die count from a dice string. |
+| `dice.sides(spec)` | Returns the number of sides from a dice string. |
+| `dice.modifier(spec)` | Returns the modifier from a dice string. |
+| `dice.multiplier(spec)` | Returns the multiplier from a dice string. |
+| `dice.roll(spec, extraDiceFromModifiers)` | Rolls the dice and returns the integer result. |
+
+```javascript
+// Build a damage string based on ST
+dice.from(Math.floor(($st.maximum - 7) / 4), 6, 0, 1)
+```
+
+### `iff(condition, trueValue, falseValue)`
+
+A ternary helper that returns `trueValue` if `condition` is truthy, otherwise `falseValue`. Useful because JavaScript's ternary operator `?:` is also available.
+
+```javascript
+iff($st.maximum >= 15, "Strong", "Average")
+```
+
+### `measure`
+
+Unit conversion helpers for length and weight values.
+
+### `signedValue(n)`
+
+Formats `n` as a string with an explicit sign (e.g., `signedValue(3)` → `"+3"`, `signedValue(-2)` → `"-2"`).
+
+```javascript
+signedValue($st.maximum - 10)
+```
+
+### `formatNum(n, withCommas, withSign)`
+
+Formats a number as a string.
+
+| Argument | Type | Description |
+|---|---|---|
+| `n` | number | The value to format. |
+| `withCommas` | boolean | Insert thousands separators. |
+| `withSign` | boolean | Prepend `+` for positive values. |
+
+```javascript
+formatNum(entity.totalPoints, true, false) // e.g., "1,250"
+```
+
+### `Math.exp2(n)`
+
+Returns 2ⁿ. Equivalent to `Math.pow(2, n)` but available as a convenience.
+
+```javascript
+Math.exp2(3) // 8
+```
+
+## The `entity` object
+
+The `entity` object represents the character whose sheet is being evaluated. It is always available.
+
+### Profile fields
+
+| Property | Type | Description |
+|---|---|---|
+| `entity.exists` | boolean | `true` when a character sheet is open (always true during sheet evaluation). |
+| `entity.playerName` | string | The player name on the sheet. |
+| `entity.name` | string | The character's name. |
+| `entity.title` | string | The character's title. |
+| `entity.organization` | string | The character's organization. |
+| `entity.religion` | string | The character's religion. |
+| `entity.techLevel` | string | The character's tech level. |
+| `entity.gender` | string | The character's gender. |
+| `entity.age` | string | The character's age. |
+| `entity.birthday` | string | The character's birthday. |
+| `entity.eyes` | string | Eye color/description. |
+| `entity.hair` | string | Hair color/description. |
+| `entity.skin` | string | Skin color/description. |
+| `entity.handedness` | string | Handedness. |
+| `entity.heightInInches` | number | Height in inches. |
+| `entity.weightInPounds` | number | Weight in pounds. |
+| `entity.displayHeightUnits` | string | The unit key used to display height (e.g., `"ft_in"`). |
+| `entity.displayWeightUnits` | string | The unit key used to display weight (e.g., `"lb"`). |
+| `entity.sizeModifier` | number | The character's adjusted Size Modifier. |
+
+### Derived stats
+
+| Property | Type | Description |
+|---|---|---|
+| `entity.liftingStrength` | number | Effective Lifting ST (integer). |
+| `entity.strikingStrength` | number | Effective Striking ST (integer). |
+| `entity.throwingStrength` | number | Effective Throwing ST (integer). |
+| `entity.extraDiceFromModifiers` | boolean | Whether the *Modifying Dice + Adds* optional rule is active. |
+
+### Collections
+
+| Property / method | Returns | Description |
+|---|---|---|
+| `entity.attributes` | `Attribute[]` | All non-separator attributes on the character. |
+| `entity.attribute(id)` | `Attribute` or `undefined` | Looks up a single attribute by ID. |
+| `entity.traits` | `Trait[]` | All enabled top-level traits. |
+| `entity.skills` | `Skill[]` | All top-level skills. |
+| `entity.spells` | `Spell[]` | All top-level spells. |
+| `entity.equipment` | `Equipment[]` | All carried equipment with quantity > 0. |
+| `entity.weapons` | `Weapon[]` | All weapons (melee and ranged) from carried and other equipment. |
+
+### Lookup methods
+
+| Method | Arguments | Description |
+|---|---|---|
+| `entity.findTraits(name, tag)` | string, string | Returns all traits matching name and/or tag. Pass `""` to match any. |
+| `entity.findSkills(name, specialization, tag)` | string, string, string | Returns matching skills. |
+| `entity.findSpells(name, tag)` | string, string | Returns matching spells. |
+| `entity.findEquipment(name, tag)` | string, string | Returns matching equipment items. |
+| `entity.findWeapons(melee, name, usage)` | boolean, string, string | Returns matching weapons. |
+| `entity.hasTrait(name)` | string | Returns `true` if the character has an enabled trait with this name (case-insensitive). |
+| `entity.skillLevel(name, specialization, relative)` | string, string, boolean | Returns the effective skill level (or relative level if `relative` is `true`). |
+| `entity.traitLevel(name)` | string | Returns the total leveled value of matching traits. |
+| `entity.weaponDamage(name, usage)` | string, string | Returns the resolved damage string for the matching weapon. |
+| `entity.currentEncumbrance(forSkills, returnMoveFactor)` | boolean, boolean | Returns the encumbrance level (0–4) or move factor (0.2–1.0). |
+
+### Random generation helpers
+
+| Method | Arguments | Description |
+|---|---|---|
+| `entity.randomHeightInInches(st)` | number | Generates a random height in inches based on ST, using the GURPS B18 chart. |
+| `entity.randomWeightInPounds(st, shift)` | number, number | Generates a random weight in pounds based on ST. `shift` adjusts towards lighter (negative) or heavier (positive) values. |
+
+## Attribute variables (`$id`)
+
+Each attribute on the character is also exposed as a global variable named `$` followed by its ID. For example, the ST attribute is available as `$st`.
+
+An attribute object has the following properties:
+
+| Property | Description |
+|---|---|
+| `$id.id` | The attribute's ID string. |
+| `$id.kind` | `"primary"`, `"secondary"`, or `"pool"`. |
+| `$id.name` | Short display name. |
+| `$id.fullName` | Full display name. |
+| `$id.maximum` | The effective (bought) value of the attribute. |
+| `$id.current` | The current value (for pools, the current HP/FP remaining). |
+| `$id.isDecimal` | `true` if the attribute accepts decimal values. |
+| `$id.valueOf()` | Returns the maximum value; lets the attribute be used directly in arithmetic. |
+
+Because of `valueOf()`, you can use attribute variables directly in expressions:
+
+```javascript
+// These are equivalent:
+$iq - 2
+$iq.maximum - 2
+```
+
+## The `self` object
+
+In contexts where a script is attached to a specific item (a trait, skill, spell, or equipment piece), the `self` object refers to that item.
+
+### `self` as a trait
+
+| Property | Description |
+|---|---|
+| `self.id` | Internal TID of the trait. |
+| `self.name` | Trait name (with replacements applied). |
+| `self.notes` | Secondary text including notes and active modifier names. |
+| `self.tags` | Array of tag strings. |
+| `self.container` | `true` if this is a container trait. |
+| `self.level` | Current leveled value (leveled traits only). |
+| `self.weapons` | Array of weapon objects attached to this trait. |
+| `self.activeModifiers` | Array of active modifier objects. |
+| `self.findActiveModifier(name)` | Returns the first active modifier with the given name, or `null`. |
+
+### `self` as a skill
+
+| Property | Description |
+|---|---|
+| `self.id` | Internal TID. |
+| `self.name` | Skill name. |
+| `self.specialization` | Specialization string. |
+| `self.techLevel` | Tech level string. |
+| `self.kind` | `"skill"` or `"technique"`. |
+| `self.attribute` | The controlling attribute ID. |
+| `self.difficulty` | Difficulty key (e.g., `"e"`, `"a"`, `"h"`). |
+| `self.points` | Adjusted point investment. |
+| `self.level` | Effective skill level. |
+| `self.relativeLevel` | Relative level (e.g., `+2` meaning `attr+2`). |
+
+## Script prerequisites
+
+A *script prerequisite* (`ScriptPrereq`) lets you gate any prerequisite check with arbitrary JavaScript logic. Instead of returning a computed value, the script must return an empty string `""` to indicate the prerequisite is **satisfied**, or a non-empty string to indicate it is **not satisfied** — the string is used as the tooltip explanation for why the prerequisite failed.
+
+<Note>
+This is the inverse of what you might expect: returning `""` (falsy) means **pass**, and returning a non-empty string (truthy) means **fail** with that message.
+</Note>
+
+**Example — require ST 10 or higher:**
+
+```javascript
+// Returns "" (satisfied) if ST >= 10, otherwise an explanation string.
+$st.maximum >= 10 ? "" : "Requires ST 10 or better (current: " + $st.maximum + ")"
+```
+
+**Example — require the character to have the Magery trait:**
+
+```javascript
+entity.hasTrait("Magery") ? "" : "Requires Magery"
+```
+
+Script prerequisites can reference `self` (the item whose prerequisites are being tested), `entity`, all `$id` attribute variables, and all global helper functions.
+
+## Execution timeout
+
+Each script invocation is time-limited by the **Permitted per-script exec time** setting in [General settings](/customization/settings) (default: 0.05 s, range: 0.001–0.5 s). If a script exceeds this limit, GCS interrupts it and replaces the result with an error message:
+
+```
+script execution timed out (limited to 0.05 seconds)
+```
+
+Scripts are cached after their first evaluation within a single recalculation pass. If the same script text with the same `self` context produces a result, subsequent calls return the cached value without re-running the engine.
+
+<Warning>
+Avoid writing scripts that perform heavy computation or iterate over large collections unconditionally. Keep scripts focused on reading a small number of attributes and returning a value.
+</Warning>
+
+## Circular reference protection
+
+GCS tracks script resolution depth. If a script chain references itself (directly or indirectly) beyond 20 levels of nesting, evaluation stops with:
+
+```
+script resolution exceeded maximum depth (possible circular reference)
+```
+
+Check your attribute base expressions and threshold values for mutual dependencies if you see this message.

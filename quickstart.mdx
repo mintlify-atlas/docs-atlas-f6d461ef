@@ -1,80 +1,105 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: "Quick start"
+description: "Create your first GURPS character in GCS: launch the app, build a sheet, add traits and skills from the library, and export to PDF."
 ---
 
-## Get started in three steps
+This guide walks you through creating a GURPS Fourth Edition character from scratch using GCS. By the end you will have a saved character sheet ready to export.
 
-Get your documentation site running locally and make your first customization.
+## Create your first character
 
-### Step 1: Set up your local environment
+<Steps>
+  <Step title="Launch GCS">
+    Open GCS from your Applications folder (macOS), Start menu (Windows), or by running the `gcs` binary (Linux).
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+    On first launch, GCS opens with the Library panel on the left and an empty workspace. If you previously saved a session, GCS restores your last workspace automatically.
+  </Step>
+  <Step title="Create a new character sheet">
+    Choose **File → New Character Sheet** from the menu bar.
 
-### Step 2: Deploy your changes
+    A new sheet opens in the workspace, pre-populated with default GURPS 4e attributes and 150 starting points (the default for a standard competent character). You can change the starting point total at any time in **Edit → Sheet Settings**.
+  </Step>
+  <Step title="Set basic character information">
+    Click on the **Identity** section at the top of the sheet to enter your character's name, player name, title, and other descriptive fields.
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+    Then review the **Attributes** panel and adjust any primary attributes — Strength, Dexterity, Intelligence, and Health — by clicking the up/down arrows or typing directly into the fields. GCS recalculates secondary characteristics (HP, Will, Perception, Basic Speed, Basic Move) and point costs immediately.
+  </Step>
+  <Step title="Add traits from the library">
+    In the Library panel on the left, expand the **Traits** section to browse available advantages and disadvantages.
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+    Drag a trait from the library onto the **Traits** table on your character sheet. GCS adds the point cost and recalculates your total automatically. To add a disadvantage, do the same — the negative point value reduces your total.
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+    <Tip>
+      Use the search box at the top of the Library panel to find traits by name rather than browsing the full list.
+    </Tip>
+  </Step>
+  <Step title="Add skills">
+    Expand the **Skills** section in the Library panel and drag skills onto the **Skills** table on your sheet.
 
-### Step 3: Go live
+    For each skill you add, click the skill row to open its editor. Set the number of points you want to invest — GCS calculates the effective level based on the controlling attribute and difficulty, following the GURPS 4e rules.
+  </Step>
+  <Step title="Add spells and equipment (optional)">
+    If your character uses magic, drag spells from the **Spells** section of the library onto the **Spells** table. Spells work like skills — point investment determines effective level.
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+    To equip your character, drag items from the **Equipment** section of the library onto the **Equipment** table. GCS tracks carried weight and calculates your encumbrance level based on your ST score.
+  </Step>
+  <Step title="Save your character sheet">
+    Choose **File → Save** (or press **Cmd+S** / **Ctrl+S**). Save the file with a `.gcs` extension.
+
+    GCS saves all character data in a single `.gcs` file that you can reopen and edit at any time.
+  </Step>
+  <Step title="Export to PDF">
+    Choose **File → Export → to PDF** to produce a print-ready character sheet. Select a destination and GCS renders the sheet to a PDF using the current sheet layout.
+
+    For HTML or custom text output, use **File → Export → to HTML** or **File → Export → using Text Template** respectively.
+  </Step>
+</Steps>
+
+## GCS file types
+
+GCS uses distinct file extensions for each type of document:
+
+| Extension | Type | Description |
+|-----------|------|-------------|
+| `.gcs` | Character sheet | A single GURPS character, including all attributes, traits, skills, spells, and equipment |
+| `.gct` | Template | A starting-point template you can apply to new character sheets |
+| `.campaign` | Campaign | Groups related character sheets and shares settings, attribute definitions, and body types |
+| `.adq` | Traits library | A reusable library of advantages, disadvantages, and quirks |
+| `.skl` | Skills library | A reusable library of skills |
+| `.spl` | Spells library | A reusable library of spells |
+| `.eqp` | Equipment library | A reusable library of equipment items |
+
+## Command-line flags
+
+You can pass flags when launching GCS from a terminal:
+
+```bash
+gcs [flags] [file]...
+```
+
+| Flag | Description |
+|------|-------------|
+| `--settings <file>` | Load settings from and store them into the specified file instead of the default location |
+| `--convert` | Convert all specified files (or directories, recursively) to the current data format, then exit |
+| `--sync` | Sync all `.gcs` and `.gct` files with their library sources, then exit |
+| `--text <template>` | Export the specified character sheets using the given text template file, then exit |
+
+<Note>
+  `--convert` and `--sync` cannot be used together. Both flags cause GCS to exit after processing all files without opening the GUI.
+</Note>
 
 ## Next steps
 
-Now that you have your docs running, explore these key features:
-
 <CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+  <Card title="Characters" icon="user" href="/characters/overview">
+    Explore all parts of a character sheet in depth.
+  </Card>
+  <Card title="Libraries & Data" icon="books" href="/libraries/overview">
+    Learn how to manage and share content libraries.
+  </Card>
+  <Card title="Export & sharing" icon="file-export" href="/export/pdf-export">
+    Customize PDF output and use text templates.
+  </Card>
+  <Card title="Scripting" icon="code" href="/customization/scripting">
+    Write JavaScript expressions for custom rules and calculations.
+  </Card>
 </CardGroup>
-
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>

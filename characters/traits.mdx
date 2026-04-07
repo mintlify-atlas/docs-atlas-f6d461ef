@@ -1,0 +1,143 @@
+---
+title: "Traits"
+description: "Add advantages, disadvantages, quirks, and perks to your character. Learn how modifiers, prerequisites, self-control rolls, and leveled costs work."
+---
+
+In GURPS, a **trait** is any inherent quality of a character that has a point cost: advantages (positive-cost traits that benefit the character), disadvantages (negative-cost traits that limit or hinder the character), quirks (minor personality flaws worth −1 point each), and perks (minor advantages worth 1 point each). GCS tracks all of these in the **Traits** panel.
+
+## Trait columns
+
+The traits panel displays the following columns by default:
+
+| Column | Description |
+|---|---|
+| **Description** | Trait name, user description, notes, and modifier summary |
+| **Points** | Point cost for this trait (negative for disadvantages) |
+| **Tags** | Comma-separated tags used for filtering and prerequisites |
+| **Reference** | Book and page reference (e.g. `B36` for Basic Set p. 36) |
+| **Library Source** | Whether the trait comes from a library and whether it is in sync |
+
+## Adding traits
+
+<Steps>
+  <Step title="From a library">
+    Open a library panel on the left sidebar and locate the trait you want. Drag it onto the **Traits** panel, or double-click it to add a copy to the current character. GCS links the trait to its library source so you can detect when the library version changes.
+  </Step>
+  <Step title="Create a custom trait">
+    Right-click anywhere in the traits panel and choose **New Trait** (or **New Trait Container** for a group). A blank trait row appears. Double-click it to open the detail editor and fill in the name, point cost, tags, and other fields.
+  </Step>
+</Steps>
+
+## Containers and groups
+
+You can organize traits into collapsible **containers** by right-clicking and choosing **New Trait Container**. Containers are display-only groupings — the point costs of contained traits are still summed individually. Common uses include grouping all racial traits together or separating advantages from disadvantages visually.
+
+Containers can have a `ContainerType` that affects how child points are calculated:
+
+- **Group** — a plain grouping; child costs are added normally.
+- **Ancestry/Race** — points spent inside count toward the `Ancestry` category in the points breakdown.
+- **Alternative Abilities** — only the highest-cost child in the container counts toward the total.
+
+## Trait modifiers
+
+A **trait modifier** adjusts the base cost of the parent trait. For example, the *Damage Resistance* advantage can have modifiers like *Hardened*, *Ablative*, or *Force Field* that change how many points each level costs.
+
+Modifiers are listed inside the trait's detail editor. Each modifier has its own cost (expressed as a flat value or as a percentage of the parent's base cost) and can be enabled or disabled without removing it.
+
+```go
+type TraitEditData struct {
+    Modifiers   []*TraitModifier  // active modifiers on this trait
+    SelfControl selfctrl.Roll     // self-control roll for disadvantages
+    Disabled    bool              // temporarily disable without deleting
+    // ...
+}
+```
+
+## Level-based traits
+
+Some traits are bought in **levels** — each level costs the same number of points. The `CanLevel` field enables leveled pricing, and `PointsPerLevel` sets the per-level cost. The total cost is:
+
+```
+Total cost = BasePoints + (Levels × PointsPerLevel)
+```
+
+For example, *Damage Resistance 3* with a base cost of 0 and 5 points per level costs 15 points.
+
+The number of levels you have purchased is shown in the description column as part of the trait name (e.g. **Damage Resistance 3**).
+
+<Note>
+  The `RoundCostDown` field on a trait causes any fractional point total (after applying modifier percentages) to be rounded down instead of up.
+</Note>
+
+## Self-control rolls
+
+Disadvantages with a behavioral or compulsive element can have a **self-control roll** (CR). The roll number represents how often the character must make a Will roll to resist acting on the disadvantage. A lower CR number means the character must resist more frequently, which increases the disadvantage's point value.
+
+| CR | Description |
+|---|---|
+| CR6 | Resist rarely (×2 cost) |
+| CR9 | Resist fairly often (×1.5 cost) |
+| CR12 | Resist quite often (×1 cost — standard) |
+| CR15 | Resist almost all the time (×0.5 cost) |
+
+GCS calculates the adjusted cost automatically when you set the CR value.
+
+## Prerequisites
+
+Every trait can have a **prerequisites list** that must be satisfied before the trait is considered valid. Unsatisfied prerequisites are highlighted in the sheet and reported in the unsatisfied-requirements list.
+
+GCS supports the following prerequisite types:
+
+<AccordionGroup>
+  <Accordion title="Trait prerequisite">
+    Requires that the character has (or does not have) a named trait, optionally at a minimum level. For example, *Compartmentalized Mind* requires *Extra Attack*.
+  </Accordion>
+  <Accordion title="Attribute prerequisite">
+    Requires that a specific attribute meets a numeric comparison (e.g. IQ ≥ 10). The comparison operator is configurable: at least, at most, equals, not equals, etc.
+  </Accordion>
+  <Accordion title="Skill prerequisite">
+    Requires a named skill at a minimum level (relative or absolute) or with a minimum number of points invested.
+  </Accordion>
+  <Accordion title="Spell prerequisite">
+    Requires a specific spell, or a minimum number of spells known from a given college or with a given tag.
+  </Accordion>
+  <Accordion title="Equipped equipment prerequisite">
+    Requires that a specific piece of equipment is present and equipped on the character.
+  </Accordion>
+  <Accordion title="Contained quantity / weight prerequisite">
+    Used on equipment containers: requires that the container holds at least (or at most) a given quantity or weight of contents.
+  </Accordion>
+  <Accordion title="Script prerequisite">
+    A JavaScript expression evaluated at runtime. The script receives the character and must return `true` for the prerequisite to be satisfied. Use this for conditions that cannot be expressed with the other types.
+  </Accordion>
+</AccordionGroup>
+
+Multiple prerequisites in a list can require that **all** conditions are met (AND logic) or that **any** condition is met (OR logic). Prerequisite lists can be nested for complex conditions.
+
+## Study hours
+
+Some traits — particularly racial traits and advantages — can require **study hours** to advance. GCS records individual study sessions, each with a type and a number of hours. Effective hours are weighted by study type:
+
+| Study type | Multiplier | Notes |
+|---|---|---|
+| Self-study | ×0.5 | Up to 12 hours/day without a job |
+| On-the-job | ×0.25 | Up to 8 hours/day with a full-time job |
+| Instruction (teacher) | ×1 | Requires a teacher with Teaching 12+ |
+| Intensive instruction | ×2 | Teacher must have a higher level than you |
+
+The **study hours needed** field on a trait sets the target (default 200 effective hours for a standard advancement). GCS displays progress inline on the sheet once any hours have been logged.
+
+<Tip>
+  You can reduce study hours needed by having a relevant **Talent** trait. Each level of an applicable Talent reduces the hours needed by 20 (down to 120 at level 4).
+</Tip>
+
+## Related pages
+
+<CardGroup cols={2}>
+  <Card title="Character overview" icon="user" href="/characters/overview">
+    How traits fit into the overall character data model and point breakdown
+  </Card>
+  <Card title="Libraries overview" icon="books" href="/libraries/overview">
+    Browse and manage the trait libraries GCS can load from
+  </Card>
+</CardGroup>

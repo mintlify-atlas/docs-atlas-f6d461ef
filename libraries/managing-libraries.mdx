@@ -1,0 +1,92 @@
+---
+title: "Managing libraries"
+description: "Add, configure, and update GCS libraries, including GitHub-hosted repositories, access tokens, favorites, and the sync command."
+---
+
+GCS lets you work with as many libraries as you need. You can add libraries that point at local folders on your machine or at GitHub repositories that publish versioned releases. This page explains how to configure each type, keep them up to date, and automate syncing sheets with library content.
+
+## Adding a library
+
+To add a new library, open the Library Explorer and click the **Configure Library** button in the toolbar (the gear icon visible when a library node is selected), then choose **New Library**, or open **File → Library Settings** from the menu.
+
+In the Library Settings panel you fill in the following fields:
+
+| Field | Required | Notes |
+|---|---|---|
+| Name | Yes | The label shown in the Library Explorer. |
+| GitHub Account | No | Leave blank for a local-only library. |
+| GitHub Access Token | No | Only needed for private repositories. |
+| Repository | No | Required if you provide a GitHub account. |
+| Path | Yes | The absolute path to the library folder on disk. |
+
+Click **Apply** to save the library. GCS immediately starts watching the folder for changes and triggers an update check if a GitHub account and repository are configured.
+
+<Note>
+  The Name and Path fields are the only ones required for a purely local library. All GitHub-related fields can be left blank.
+</Note>
+
+## GitHub-hosted libraries
+
+When you configure a library with a `GitHubAccountName` and `RepoName`, GCS queries the GitHub Releases API at:
+
+```
+https://api.github.com/repos/{account}/{repo}/releases
+```
+
+GCS looks for releases with tags in the form `vN.x.y`, where `N` matches the range of data-file versions that the currently installed GCS can read (currently version 5). Releases outside that range are filtered out automatically to protect you from incompatible data.
+
+### Access tokens for private repositories
+
+If the repository is private, enter a GitHub Personal Access Token in the **GitHub Access Token** field. The token needs only the read-only **Contents** permission for that repository. GCS passes the token as a `Bearer` authorization header when downloading releases.
+
+<Tip>
+  Store access tokens in a password manager before entering them in GCS — the token field does not mask its contents after you save.
+</Tip>
+
+### UseLatest: tracking the most recent commit
+
+Checking **Use the most recent commit (possibly unreleased) of this repository** sets the `UseLatest` flag. Instead of querying the Releases API, GCS clones the latest commit from the repository's default branch using Git and extracts the `Library/` subtree. The downloaded version is identified by the commit hash rather than a version tag.
+
+<Note>
+  When `UseLatest` is enabled, no data-version compatibility guarantees apply. The library content may be written with a newer or older data format than your GCS installation expects.
+</Note>
+
+## Favorites
+
+You can pin any sub-folder inside a library to the **Favorites** section at the top of the Library Explorer. Select the folder in the tree and click the **Favorite** (star) button in the toolbar. Favorites are stored as relative paths inside the library's `PathOnDisk`.
+
+GCS automatically prunes favorites that can no longer be read from disk (for example, after a library update removes a folder), so the list stays clean without manual maintenance.
+
+## Checking for and downloading updates
+
+GCS checks all GitHub-backed libraries for available upgrades in the background when it starts. You can also trigger a manual check by selecting a library node in the Library Explorer and clicking the **Download Library** button.
+
+The update check uses the following logic:
+
+1. GCS reads the current installed version from a `release.txt` file at the root of the library folder. If the file is missing, the version is treated as `0`.
+2. GCS fetches the list of releases from the GitHub API and discards any that are outside the compatible version range.
+3. If the latest compatible release differs from the installed version, GCS notifies you with a badge on the library node.
+4. Clicking **Download Library** fetches the release zip, unpacks the `Library/` subtree into a temporary directory, and then atomically replaces the existing library folder.
+5. After a successful download, GCS writes the new version string to `release.txt`.
+
+If a download fails for any reason, GCS rolls back by restoring the previous folder, so your existing library content is never lost.
+
+## File monitoring
+
+GCS uses OS-level filesystem notifications to watch every library directory tree. When a file is created, modified, renamed, or deleted inside a library folder, the Library Explorer refreshes automatically. This means you can edit library files in an external editor and see the changes reflected in GCS without restarting the application.
+
+## Syncing sheets and templates with library sources
+
+Over time, items in a library can be updated with corrections or new data. The `--sync` command-line flag re-reads every `.gcs` (character sheet) and `.gct` (template) file in the given paths and updates each item that originated from a library with the current version of that item from the library.
+
+```bash
+gcs --sync /path/to/characters /path/to/templates
+```
+
+GCS walks the directory tree, processes each sheet and template file in alphabetical order, calls `SyncWithLibrarySources()` on the loaded data, recalculates any derived values, and writes the file back to disk. A count of processed files is printed when the operation completes.
+
+<Tip>
+  Run `--sync` after downloading a library update to propagate changes such as corrected point costs or updated skill defaults to all of your existing characters at once.
+</Tip>
+
+For bulk file-format upgrades without syncing library content, see the `--convert` flag described in [file formats](/libraries/file-formats#converting-files-to-the-current-format).

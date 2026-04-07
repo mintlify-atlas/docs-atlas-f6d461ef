@@ -1,0 +1,150 @@
+---
+title: "Sheet settings"
+description: "Control how character sheets are laid out, printed, and calculated—globally or per character."
+---
+
+Sheet settings govern how a character sheet looks and how optional GURPS rules are applied. They exist at two levels:
+
+- **Global sheet settings** — the defaults applied to every new character. Edit them from **Edit → Sheet Settings** (or the equivalent menu on your platform).
+- **Per-character sheet settings** — each character sheet can override any global setting. Open a character's sheet, then go to **Sheet → Sheet Settings** to edit settings for that character only.
+
+When a function in GCS needs to read settings for a specific character, it calls `SheetSettingsFor(entity)`, which returns the character's own settings if present or falls back to the global defaults.
+
+## Page settings
+
+These settings control how the sheet looks when printed or exported as a PDF or image.
+
+| Setting | Description |
+|---|---|
+| **Paper size** | The physical page size (e.g., Letter, A4, Legal). |
+| **Orientation** | Portrait or landscape. |
+| **Margins** | Top, bottom, left, and right margin widths. |
+
+## Block layout
+
+The sheet is divided into named blocks (Traits, Skills, Spells, Equipment, etc.). The **Block Layout** setting determines which blocks appear and in what order. You can drag blocks to rearrange them or toggle their visibility.
+
+Changing the block layout triggers a full rebuild of the sheet display.
+
+## Units
+
+| Setting | Default | Description |
+|---|---|---|
+| **Default length units** | Feet & Inches | The unit used to display and enter length/height values. |
+| **Default weight units** | Pounds | The unit used to display and enter weight values. |
+
+## Damage progression
+
+The **Damage progression** setting controls how the Thrust (thr) and Swing (sw) damage values scale with ST. The available options are:
+
+| Option | Source |
+|---|---|
+| Basic Set | Standard GURPS Basic Set progression |
+| Knowing Your Own Strength | Pyramid 3/83, pages 16–19 |
+| No School Grognard Damage | No School Grognard blog |
+| Thrust = Swing-2 | Community alternate damage scheme |
+| Swing = Thrust+2 | Kevin Smyth house rule |
+| T Bone's New Damage for ST (option 1) | T Bone's Games Diner |
+| T Bone's New Damage for ST (option 1, cleaned) | T Bone's Games Diner |
+| T Bone's New Damage for ST (option 2) | T Bone's Games Diner |
+| T Bone's New Damage for ST (option 2, cleaned) | T Bone's Games Diner |
+| Phoenix Flame D3 | Community house rule using d3s |
+
+## Display options
+
+These settings control where supplementary text appears on the sheet. Each accepts one of four display modes:
+
+| Mode | Behavior |
+|---|---|
+| `not_shown` | The text is hidden entirely. |
+| `inline` | The text appears directly on the sheet row. |
+| `tooltip` | The text appears in a tooltip when you hover over the row. |
+| `inline_and_tooltip` | The text appears both inline and in the tooltip. |
+
+| Setting | Default | What it controls |
+|---|---|---|
+| **User description display** | Tooltip | Where the user-written description for traits, skills, etc. is shown. |
+| **Modifiers display** | Inline | Where active modifier names are shown on trait/skill rows. |
+| **Notes display** | Inline | Where the notes field is shown on list rows. |
+| **Skill level adj display** | Tooltip | Where skill level adjustments (from equipment or conditions) are shown. |
+
+## Optional GURPS rules
+
+<AccordionGroup>
+  <Accordion title="Multiplicative modifiers">
+    When enabled, percentage-based trait modifiers are multiplied together rather than added. This implements the optional rule described in GURPS Basic Set, p. B102.
+
+    **Setting:** `UseMultiplicativeModifiers`
+  </Accordion>
+  <Accordion title="Modifying dice + adds">
+    When enabled, weapon damage that would be expressed as a flat add (e.g., thr+4) is instead converted to an equivalent number of extra dice. Activates the *Modifying Dice + Adds* optional rule.
+
+    **Setting:** `UseModifyingDicePlusAdds` — also accessible from scripts as `entity.extraDiceFromModifiers`
+  </Accordion>
+  <Accordion title="Half-stat defaults">
+    When enabled, unskilled use of a skill defaults to half the controlling attribute rather than the attribute minus a penalty. Implements the optional rule from GURPS Basic Set.
+
+    **Setting:** `UseHalfStatDefaults`
+  </Accordion>
+</AccordionGroup>
+
+## Column and adjustment visibility
+
+These boolean flags control which columns and calculated adjustments appear on the sheet.
+
+### Adjustment display
+
+| Setting | Default | Description |
+|---|---|---|
+| **Show trait modifier adj** | Off | Shows the net point cost adjustment from active trait modifiers in a separate column. |
+| **Show equipment modifier adj** | Off | Shows the net point cost adjustment from active equipment modifiers. |
+| **Show spell adj** | On | Shows the point cost adjustment column on the spells list. |
+| **Show all weapons** | Off | When off, only weapons from equipped items are listed. When on, weapons from all carried items (regardless of equipped state) are shown. |
+
+### Column hiding
+
+| Setting | Default | Description |
+|---|---|---|
+| **Hide TL column** | Off | Removes the Tech Level column from trait and equipment lists. |
+| **Hide LC column** | Off | Removes the Legality Class column from equipment lists. |
+| **Hide page reference column** | Off | Removes the page reference (book/page) column from all lists. |
+| **Hide source mismatch** | Off | Suppresses warnings when a library item's content has changed since it was added to the sheet. |
+
+## Footer
+
+| Setting | Default | Description |
+|---|---|---|
+| **Use title in footer** | Off | When enabled, the character's title field is printed in the sheet footer instead of the player name. |
+
+## Point totals
+
+| Setting | Default | Description |
+|---|---|---|
+| **Exclude unspent points from total** | Off | When enabled, unspent/unallocated character points are not counted in the displayed total. |
+
+## Additional damage columns
+
+| Setting | Default | Description |
+|---|---|---|
+| **Show Lifting ST damage** | Off | Adds a column showing damage based on Lifting ST rather than striking ST. |
+| **Show IQ-based damage** | Off | Adds a column showing damage scaled from IQ for certain creature types. |
+
+## Saving sheet settings to a file
+
+You can export the current sheet settings to a `.sheet` file and share it with other GCS users or load it into future characters.
+
+<Steps>
+  <Step title="Open sheet settings">
+    Open the character whose settings you want to export, then go to **Sheet → Sheet Settings**.
+  </Step>
+  <Step title="Export">
+    Click **Export** (or use **File → Export Sheet Settings**) and choose a destination. GCS writes the settings as a JSON file with a `.sheet` extension.
+  </Step>
+  <Step title="Import on another character">
+    Open the target character's Sheet Settings dialog, click **Import**, and select the `.sheet` file. The settings are applied immediately.
+  </Step>
+</Steps>
+
+<Tip>
+To apply a consistent look across an entire campaign, export your preferred settings once and import them into each new character.
+</Tip>

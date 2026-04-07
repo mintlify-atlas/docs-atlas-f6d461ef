@@ -1,0 +1,148 @@
+---
+title: "Attributes and body type"
+description: "Define custom attributes, point costs, pool thresholds, and hit location tables for any GURPS campaign setting."
+---
+
+GCS stores attribute definitions and body type (hit location table) as part of the [sheet settings](/customization/sheet-settings). You can customize them globally or per character, and save them to standalone files for reuse across campaigns.
+
+## Attribute definitions
+
+An *attribute definition* (`AttributeDef`) describes a single stat: its ID, display name, how its base value is calculated, and how many character points each level costs.
+
+### Attribute definition fields
+
+| Field | JSON key | Description |
+|---|---|---|
+| **ID** | `id` | Short identifier used in scripts and formulas (e.g., `st`, `dx`, `iq`). Must be unique and cannot be one of the reserved IDs (`skill`, `parry`, `block`, `size_modifier`). |
+| **Type** | `type` | The kind of value this attribute holds (see [Attribute types](#attribute-types) below). |
+| **Placement** | `placement` | Controls whether the attribute appears in the Primary, Secondary, or Pool section, or is hidden entirely. |
+| **Name** | `name` | Short label shown in compact table cells (e.g., `ST`). |
+| **Full name** | `full_name` | Longer label used in tooltips and the attribute editor (e.g., `Strength`). Falls back to `name` if empty. |
+| **Base** | `base` | A number or JavaScript expression that defines the starting value. For primary attributes this is typically a plain number; for secondary attributes it references another attribute (e.g., `$iq`). |
+| **Cost per point** | `cost_per_point` | How many character points each +1 to this attribute costs. |
+| **Cost adj % per SM** | `cost_adj_percent_per_sm` | Percentage by which the cost is reduced for each point of positive Size Modifier. Used for HP and ST. |
+| **Thresholds** | `thresholds` | Only for pool attributes. Ordered list of pool threshold states (see [Pool thresholds](#pool-thresholds)). |
+
+### Attribute types
+
+| Type | Key | Description |
+|---|---|---|
+| Integer | `integer` | A whole-number attribute (e.g., ST, DX, IQ, HT). |
+| Integer (display only) | `integer_ref` | Displays the resolved value of another attribute or expression; cannot be directly modified. |
+| Decimal | `decimal` | A fractional attribute (e.g., Basic Speed). |
+| Decimal (display only) | `decimal_ref` | Like `integer_ref` but shows a decimal value. |
+| Pool | `pool` | A resource pool with a current and maximum value (e.g., HP, FP). Supports thresholds. |
+| Pool (display only for max) | `pool_ref` | A pool whose maximum is derived rather than directly edited. |
+| Primary separator | `primary_separator` | A visual divider in the primary attributes section. |
+| Secondary separator | `secondary_separator` | A visual divider in the secondary attributes section. |
+| Pool separator | `pool_separator` | A visual divider in the pool attributes section. |
+
+### Pool thresholds
+
+Pool attributes (HP, FP, etc.) can define *thresholds* — levels within the pool that trigger named states. When the current value of a pool falls at or below a threshold's computed value, the character is considered to be in that state.
+
+| Field | JSON key | Description |
+|---|---|---|
+| **State** | `state` | A short label for this condition (e.g., `Hurt`, `Reeling`, `Collapse`, `Dead`). |
+| **Value** | `value` | A JavaScript expression evaluated against the pool's maximum to determine the trigger point (e.g., `round($hp/3)` for one-third of max HP). |
+| **Explanation** | `explanation` | Optional descriptive text shown when the character is in this state. Supports embedded scripts. |
+| **Ops** | `ops` | Optional list of operations to apply automatically when this threshold is crossed (e.g., halving Move). |
+
+**Example — standard HP thresholds:**
+
+```json
+[
+  { "state": "Reeling",  "value": "round($hp/3)" },
+  { "state": "Collapse", "value": "0" },
+  { "state": "Dead",     "value": "-$hp" },
+  { "state": "Destroyed","value": "-$hp*5" }
+]
+```
+
+The `$hp` variable in a threshold expression refers to the pool attribute's own maximum value (i.e., its `id`).
+
+### Primary vs. secondary attributes
+
+GCS distinguishes primary from secondary attributes by examining the `base` field:
+
+- If the base is a plain number (e.g., `10`), the attribute is treated as **primary** — it has an independent point cost.
+- If the base contains a reference to another attribute (e.g., `$iq`), it is treated as **secondary** — its starting value is derived, and buying it up costs points relative to that derived value.
+
+You can explicitly override this by setting `placement` to `primary` or `secondary`.
+
+## Body type (hit location table)
+
+A *body type* defines the hit location table used for a character — what areas can be hit, how to roll for them, and any special properties.
+
+### Body definition fields
+
+| Field | JSON key | Description |
+|---|---|---|
+| **Name** | `name` | Display name for this body type (e.g., `Humanoid`, `Quadruped`). |
+| **Roll** | `roll` | The dice expression rolled to determine hit location (e.g., `3d6`). |
+| **Locations** | `locations` | Ordered list of `HitLocation` entries. |
+
+### Hit location fields
+
+| Field | JSON key | Description |
+|---|---|---|
+| **ID** | `id` | Unique identifier for this location (e.g., `torso`, `skull`). |
+| **Choice name** | `choice_name` | The label shown in drop-down selectors when targeting this location. |
+| **Table name** | `table_name` | The label shown in the hit location table column. |
+| **Slots** | `slots` | How many consecutive die results map to this location. A value of 2 means this location covers two numbers on the table. |
+| **Hit penalty** | `hit_penalty` | The attack roll penalty for deliberately targeting this location (e.g., `-5` for skull). |
+| **DR bonus** | `dr_bonus` | Any inherent DR bonus for this location beyond equipped armor. |
+| **Description** | `description` | Explanatory text shown as a tooltip. |
+| **Notes** | `notes` | Additional rules notes for this location. |
+| **Sub-table** | `sub_table` | A nested `Body` definition for locations that have their own roll table (e.g., arms and legs). |
+
+### Built-in body types
+
+GCS ships with the **Humanoid** body type loaded from `embedded_data/Humanoid.body` as the factory default. You can switch to a different body type by loading a `.body` file from a library or editing the body type directly in the Sheet Settings editor.
+
+<Tip>
+Built-in body type files for common creature types (Quadruped, Winged, etc.) may be available in GCS libraries. Check your loaded libraries in the navigator.
+</Tip>
+
+### Sub-tables
+
+Locations like arms and legs can have their own hit sub-tables. When a roll result maps to a location that has a sub-table, a second roll is made against that sub-table to determine the specific sub-location (e.g., upper arm vs. lower arm vs. hand). Nest a complete `Body` definition in the location's `sub_table` field to create this behavior.
+
+## Managing attribute and body type files
+
+### Saving to a file
+
+You can export the current attribute definitions or body type to a standalone file:
+
+- **Attribute definitions** are saved with the `.attr` extension.
+- **Body types** are saved with the `.body` extension.
+
+Both formats are JSON and can be shared with other users or stored in a library.
+
+<Steps>
+  <Step title="Open sheet settings">
+    Open the Sheet Settings editor (**Edit → Sheet Settings** or per-character via **Sheet → Sheet Settings**).
+  </Step>
+  <Step title="Navigate to the Attributes or Body Type tab">
+    Click the **Attributes** or **Body Type** tab.
+  </Step>
+  <Step title="Export">
+    Use the **Export** button to save the current definitions to a `.attr` or `.body` file.
+  </Step>
+</Steps>
+
+### Loading custom definitions from a library
+
+If a `.attr` or `.body` file is placed inside a GCS library folder, it becomes available in the navigator. To apply a library definition:
+
+<Steps>
+  <Step title="Open the navigator">
+    Open the library navigator and locate the `.attr` or `.body` file.
+  </Step>
+  <Step title="Open sheet settings">
+    Open the Sheet Settings editor for the target character or global settings.
+  </Step>
+  <Step title="Import the file">
+    Drag the file from the navigator into the Attributes or Body Type tab, or use the **Import** button and browse to the file.
+  </Step>
+</Steps>

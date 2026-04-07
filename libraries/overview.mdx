@@ -1,0 +1,69 @@
+---
+title: "Libraries overview"
+description: "Understand what GCS libraries are, how they are organized, and how to browse them in the Library Explorer."
+---
+
+A **library** in GURPS Character Sheet is a folder on your disk containing GCS data files — traits, skills, spells, equipment, notes, and more. Libraries give you a reusable pool of content that you can drag directly onto character sheets and templates without having to retype anything.
+
+## What a library contains
+
+Every library is rooted at a directory on disk (`PathOnDisk`). Inside that directory you can place any combination of GCS data files, organized into sub-folders however you like. GCS recognizes files by their extension and presents them grouped by type in the Library Explorer.
+
+A library is described by the following properties:
+
+| Field | Purpose |
+|---|---|
+| `Title` | The human-readable name shown in the Library Explorer. |
+| `GitHubAccountName` | The GitHub account that owns the repository, if hosted on GitHub. Empty for local-only libraries. |
+| `RepoName` | The GitHub repository name. Combined with `GitHubAccountName` to form a unique key (`account/repo`). |
+| `PathOnDisk` | The absolute path to the library folder on your machine. |
+| `Favorites` | A list of sub-paths inside the library that you have pinned for quick access. |
+| `UseLatest` | When `true`, GCS tracks the most recent commit on the repository's default branch instead of tagged releases. |
+
+## Built-in libraries
+
+GCS ships with two libraries that are always present:
+
+- **Master Library** — maintained by Richard Wilkes at `richardwilkes/gcs_master_library` on GitHub. It contains a broad collection of GURPS content that covers the core rules. GCS checks this library for versioned releases and can download updates for you.
+- **User Library** — a local library stored in your GCS data folder. This is where you keep your own custom content. It has no GitHub backing and is never auto-updated.
+
+You can add as many additional libraries as you need, pointing at local folders or other GitHub repositories.
+
+## The Library Explorer
+
+The Library Explorer (also called the Navigator) is the panel on the left side of the GCS workspace. It shows every configured library as a top-level node, with the User Library always listed first, the Master Library second, and any additional libraries sorted alphabetically after that.
+
+From the Library Explorer you can:
+
+- **Browse** folders and files within each library using the tree view.
+- **Search** across all libraries using the search field at the top of the panel. Results are highlighted and you can cycle through matches with the navigation buttons.
+- **Deep-search** inside supported file types (such as trait and equipment lists) to locate individual entries by name.
+- **Drag items** from a library file onto an open character sheet or template to add them instantly.
+- **Favorite** a folder by selecting it and clicking the star button, which pins it to the Favorites section for fast access.
+- **Download updates** for GitHub-backed libraries directly from the toolbar buttons that appear when a library node is selected.
+
+<Note>
+  GCS watches all library directories for changes on disk. If you add, remove, or edit files in a library folder using an external tool, the Library Explorer will refresh automatically.
+</Note>
+
+## How files are organized by type
+
+The Library Explorer groups files by their extension so you can see at a glance what kind of content a folder contains. Primary data files (traits, skills, equipment, and so on) appear directly in the tree. Configuration files such as attribute definitions, body hit locations, and color themes are also part of a library but are not opened into their own editor views — they are applied through the settings panels instead.
+
+See the [file formats reference](/libraries/file-formats) for a complete list of recognized extensions and what each one stores.
+
+## Library sources
+
+Libraries can come from two sources:
+
+- **Local directories** — any folder on your machine. Leave the GitHub Account field blank when configuring these. GCS will watch the folder for changes but will never attempt to fetch updates from the network.
+- **GitHub repositories** — repositories hosted on GitHub.com. GCS queries the GitHub Releases API to find versions tagged in the form `vN.x.y` and can download and unpack them for you. Private repositories are supported by providing a GitHub access token with read-only content permissions.
+
+<CardGroup cols={2}>
+  <Card title="Managing libraries" href="/libraries/managing-libraries">
+    Add, configure, and update libraries, including GitHub-hosted repos and access tokens.
+  </Card>
+  <Card title="File formats" href="/libraries/file-formats">
+    Every file extension GCS recognizes, what data it holds, and how versioning works.
+  </Card>
+</CardGroup>

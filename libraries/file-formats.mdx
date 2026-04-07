@@ -1,0 +1,157 @@
+---
+title: "File formats"
+description: "Every file extension that GCS recognizes, the data each one stores, the JSON versioning scheme, and how to convert files to the current format."
+---
+
+All GCS data files are plain JSON, written with deterministic key ordering and tab indentation. Because the format evolves over time, each file carries a `version` integer that GCS uses to detect old files and migrate them forward automatically on load. The current data version is **5**.
+
+## Primary file types
+
+Primary files are the ones you open into an editor view inside GCS. You can drag them from the Library Explorer onto a character sheet or template.
+
+<AccordionGroup>
+  <Accordion title=".gcs — Character sheet">
+    A complete GURPS character, including attributes, advantages, disadvantages, skills, spells, equipment, notes, and all derived values. These are the files you create when you start a new character.
+  </Accordion>
+  <Accordion title=".gct — Character template">
+    A template that defines a starting point for new characters — a preset collection of traits, skills, and equipment. Applying a template to a sheet adds its contents to the character.
+  </Accordion>
+  <Accordion title=".campaign — Campaign">
+    Campaign-level data that can be shared across multiple characters. Campaign support is still in active development.
+  </Accordion>
+  <Accordion title=".adq — Traits (advantages/disadvantages/quirks)">
+    A list of GURPS traits. Each entry records its name, point cost, modifiers, categories, and description. The extension is short for *advantage*.
+  </Accordion>
+  <Accordion title=".adm — Trait modifiers">
+    Modifiers that can be attached to traits to adjust their point cost or behavior (e.g., *Accessibility*, *Area Effect*).
+  </Accordion>
+  <Accordion title=".skl — Skills">
+    A list of skills with their controlling attribute, difficulty, default values, and any specializations.
+  </Accordion>
+  <Accordion title=".spl — Spells">
+    A list of spells. Spells share most of their structure with skills and additionally record the spell college, casting cost, and time.
+  </Accordion>
+  <Accordion title=".eqp — Equipment">
+    A list of equipment items with weight, cost, tech level, and any modifiers. Containers (e.g., a backpack with contents) are represented as nested trees.
+  </Accordion>
+  <Accordion title=".eqm — Equipment modifiers">
+    Modifiers that adjust the cost, weight, or other properties of equipment items.
+  </Accordion>
+  <Accordion title=".not — Notes">
+    Free-form text notes that can be attached to a character or stored in a library for reuse.
+  </Accordion>
+  <Accordion title=".loot — Loot">
+    A standalone equipment list used to represent treasure, loot drops, or NPC inventories, separate from a character sheet.
+  </Accordion>
+  <Accordion title=".md — Markdown">
+    Plain Markdown text files. GCS displays these in a read-only rendered view inside the editor dock. Useful for README files and documentation inside a library.
+  </Accordion>
+</AccordionGroup>
+
+## Secondary (configuration) file types
+
+Secondary files configure how GCS behaves or how sheets are displayed. They do not open into their own editor views — you apply them through the Settings panels. They can be stored in a library and shared across a team or campaign.
+
+| Extension | Contents |
+|---|---|
+| `.ancestry` | Ancestry (species/race) definitions, including random name tables and trait pools. |
+| `.attr` / `.attributes` / `.gas` | Attribute definitions: which attributes exist, their base values, costs, and ordering. |
+| `.body` / `.ghl` | Body hit-location tables used on the sheet's Hit Locations panel. |
+| `.calendar` | Custom calendar definitions for campaigns that use non-standard timekeeping. |
+| `.colors` | UI color theme overrides. |
+| `.fonts` | Font assignments for the GCS interface and printed output. |
+| `.general` | General application settings such as default page size and auto-backup interval. |
+| `.keys` | Keyboard shortcut bindings. |
+| `.names` | Name lists used by the random-name generator in ancestry definitions. |
+| `.refs` | Page-reference mappings that link GURPS book abbreviations to PDF files. |
+| `.sheet` | Per-sheet settings such as damage progression, optional rules, and block layout. |
+| `.web` | Settings for the web-export template. |
+
+<Note>
+  Some secondary extensions have legacy alternates (`.attributes`, `.gas`, `.ghl`) that GCS still reads for backward compatibility but does not write. New files always use the primary extension.
+</Note>
+
+## JSON structure and versioning
+
+Every GCS data file (except `.calendar` and `.names`, which currently carry no version field) begins with a `version` key:
+
+```json
+{
+	"version": 5,
+	"rows": [
+		...
+	]
+}
+```
+
+When GCS loads a file it reads the `version` field first and passes it through `jio.CheckVersion`. Files written with a version older than **2** cannot be loaded; you must use an older GCS release to open them and re-save before upgrading. Files written with a version newer than the current release also cannot be loaded — GCS will ask you to update the application.
+
+The `jio` package handles all file I/O:
+
+- **Loading** — `jio.Load` opens the file, strips any UTF-8 BOM, and deserializes the JSON. Each data type's unmarshalling code reads the `version` field and migrates the data forward as needed.
+- **Saving** — `jio.SaveToFile` writes nicely formatted JSON (tab-indented, deterministic key order) using a safe-write pattern: data is written to a temporary file first, then atomically renamed over the destination, so a crash during save cannot corrupt your existing file.
+
+## Converting files to the current format
+
+If you have a collection of older GCS files — for example, a library you downloaded when GCS was at an earlier version — you can upgrade them all to the current format in one step using the `--convert` flag:
+
+```bash
+gcs --convert /path/to/library /path/to/another/folder
+```
+
+GCS walks each path recursively, finds every file whose extension matches a known GCS type, loads it (triggering any necessary migrations), and writes it back out in the current format. Symlinks are followed without revisiting already-processed paths. Files with a leading `.` in their name are skipped.
+
+The command prints the path of each file it processes and a final count:
+
+```
+Processing /path/to/library/Advantages/Acute Senses.adq
+Processing /path/to/library/Skills/Combat Skills.skl
+...
+Processed 42 files
+```
+
+<Tip>
+  Run `--convert` on your library directory after a major GCS update to ensure all files are in the latest format before distributing the library to other users.
+</Tip>
+
+To update character sheets and templates so their embedded items match current library data (not just the file format), use `--sync` instead. See [managing libraries](/libraries/managing-libraries#syncing-sheets-and-templates-with-library-sources) for details.
+
+## File associations
+
+The table below maps every recognized extension to the Go type that represents it and whether the file is directly openable in an editor view.
+
+| Extension | Go type | Openable |
+|---|---|---|
+| `.gcs` | `Entity` | Yes |
+| `.gct` | `Template` | Yes |
+| `.campaign` | `Campaign` | Yes (in development) |
+| `.adq` | `[]*Trait` | Yes |
+| `.adm` | `[]*TraitModifier` | Yes |
+| `.skl` | `[]*Skill` | Yes |
+| `.spl` | `[]*Spell` | Yes |
+| `.eqp` | `[]*Equipment` | Yes |
+| `.eqm` | `[]*EquipmentModifier` | Yes |
+| `.not` | `[]*Note` | Yes |
+| `.loot` | `Loot` | Yes |
+| `.md` | Markdown text | Yes (read-only) |
+| `.ancestry` | `Ancestry` | No |
+| `.attr` / `.attributes` / `.gas` | `AttributeDefs` | No |
+| `.body` / `.ghl` | `Body` | No |
+| `.calendar` | Calendar data | No |
+| `.colors` | `colors.Colors` | No |
+| `.fonts` | `fonts.Fonts` | No |
+| `.general` | `GeneralSettings` | No |
+| `.keys` | `KeyBindings` | No |
+| `.names` | Name tables | No |
+| `.refs` | `PageRefs` | No |
+| `.sheet` | `SheetSettings` | No |
+| `.web` | Web settings | No |
+
+<CardGroup cols={2}>
+  <Card title="Managing libraries" href="/libraries/managing-libraries">
+    Add libraries, configure GitHub repositories, and download updates.
+  </Card>
+  <Card title="CLI reference" href="/reference/cli">
+    Full documentation for the `--convert`, `--sync`, and other command-line flags.
+  </Card>
+</CardGroup>

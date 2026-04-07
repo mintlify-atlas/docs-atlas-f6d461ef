@@ -1,0 +1,245 @@
+---
+title: "Entity (character) reference"
+description: "Complete reference for the EntityData struct — the top-level data model that represents a GURPS character or NPC saved to disk."
+---
+
+An **entity** is the root object for every character, NPC, or creature in GCS. When you save a `.gcs` file the entire character is serialised as a single JSON object whose shape is defined by `EntityData`.
+
+## Top-level fields
+
+<ResponseField name="version" type="int" required>
+  Data-format version number written by GCS. Used at load time to migrate older files. See `jio.CurrentDataVersion`.
+</ResponseField>
+
+<ResponseField name="id" type="tid.TID" required>
+  Globally unique identifier for this entity. Generated from the `kinds.Entity` kind prefix.
+</ResponseField>
+
+<ResponseField name="total_points" type="fxp.Int" required>
+  The total character-point budget assigned to this entity. Displayed in the points summary area of the sheet.
+
+  `fxp.Int` is a fixed-point decimal backed by a 64-bit integer with four decimal places of precision.
+</ResponseField>
+
+<ResponseField name="points_record" type="[]*PointsRecord">
+  Ordered history of point adjustments, oldest first. Each entry captures when points were changed and why.
+
+  <Expandable title="PointsRecord fields">
+    <ResponseField name="when" type="jio.Time">
+      Timestamp of the adjustment.
+    </ResponseField>
+    <ResponseField name="points" type="fxp.Int">
+      The new total point value recorded at this time.
+    </ResponseField>
+    <ResponseField name="reason" type="string">
+      Human-readable explanation (e.g. `"Initial points"`, `"Session reward"`).
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="profile" type="Profile">
+  Biographical and physical description fields. See [Profile](#profile) below.
+</ResponseField>
+
+<ResponseField name="settings" type="*SheetSettings">
+  Per-character overrides for sheet display, damage progression, attribute definitions, and body type. When absent the global sheet settings apply.
+</ResponseField>
+
+<ResponseField name="attributes" type="*Attributes">
+  Map of attribute IDs to their current point-investment and computed values (ST, DX, IQ, HT, and any custom attributes defined in `SheetSettings`).
+</ResponseField>
+
+<ResponseField name="traits" type="[]*Trait">
+  Advantages, disadvantages, quirks, perks, and trait containers owned by this character. See [Traits and modifiers](/reference/traits-and-modifiers).
+</ResponseField>
+
+<ResponseField name="skills" type="[]*Skill">
+  Skills and techniques purchased for this character. See [Skills and spells](/reference/skills-and-spells-ref).
+</ResponseField>
+
+<ResponseField name="spells" type="[]*Spell">
+  Spells known by this character. See [Skills and spells](/reference/skills-and-spells-ref).
+</ResponseField>
+
+<ResponseField name="equipment" type="[]*Equipment">
+  Items the character is **carrying** (contributing to encumbrance). See [Equipment](/reference/equipment-ref).
+</ResponseField>
+
+<ResponseField name="other_equipment" type="[]*Equipment">
+  Items owned but **not currently carried** — stored at home, in a vehicle, etc. These do not contribute to encumbrance.
+</ResponseField>
+
+<ResponseField name="notes" type="[]*Note">
+  Free-form text notes attached to the character.
+</ResponseField>
+
+<ResponseField name="created_date" type="jio.Time">
+  Timestamp when this character was first created.
+</ResponseField>
+
+<ResponseField name="modified_date" type="jio.Time">
+  Timestamp of the most recent save.
+</ResponseField>
+
+<ResponseField name="third_party" type="map[string]any">
+  Arbitrary key/value storage reserved for external tools and VTT integrations. GCS itself ignores this data.
+</ResponseField>
+
+---
+
+## Profile
+
+The `Profile` struct stores biographical and physical description data for a character.
+
+<ResponseField name="name" type="string">
+  Character's given name. Can be generated from an ancestry's name table.
+</ResponseField>
+
+<ResponseField name="player_name" type="string">
+  Name of the player running this character.
+</ResponseField>
+
+<ResponseField name="title" type="string">
+  Job title, noble rank, or other formal designation (e.g. `"Knight"`, `"Doctor"`).
+</ResponseField>
+
+<ResponseField name="organization" type="string">
+  Affiliation, guild, or employer.
+</ResponseField>
+
+<ResponseField name="religion" type="string">
+  Religious or philosophical affiliation.
+</ResponseField>
+
+<ResponseField name="tech_level" type="string">
+  The character's native technology level (e.g. `"3"`, `"9^"`). Controls which TL-restricted traits and equipment are available.
+</ResponseField>
+
+<ResponseField name="birthday" type="string">
+  Birthday string, formatted according to the campaign calendar.
+</ResponseField>
+
+<ResponseField name="age" type="string">
+  Character's current age as a free-form string.
+</ResponseField>
+
+<ResponseField name="gender" type="string">
+  Gender, drawn from the ancestry definition or entered manually.
+</ResponseField>
+
+<ResponseField name="eyes" type="string">
+  Eye colour/description.
+</ResponseField>
+
+<ResponseField name="hair" type="string">
+  Hair colour and style.
+</ResponseField>
+
+<ResponseField name="skin" type="string">
+  Skin tone or texture.
+</ResponseField>
+
+<ResponseField name="handedness" type="string">
+  Dominant hand (e.g. `"Right"`, `"Left"`, `"Ambidextrous"`).
+</ResponseField>
+
+<ResponseField name="height" type="fxp.Length">
+  Character's height. `fxp.Length` stores a numeric value and a length unit (e.g. feet/inches or centimetres). The unit is determined by the sheet's length-unit setting.
+</ResponseField>
+
+<ResponseField name="weight" type="fxp.Weight">
+  Character's weight. `fxp.Weight` stores a numeric value and a weight unit (lb or kg).
+</ResponseField>
+
+<ResponseField name="SM" type="int">
+  Base Size Modifier. Each +1 represents roughly a ×1.5 increase in linear dimension. Applied bonuses from features are stored separately in `SizeModifierBonus`.
+</ResponseField>
+
+<ResponseField name="portrait" type="[]byte">
+  Raw image bytes for the character portrait. Supported formats: WebP, PNG, JPEG, GIF, BMP. Stored as a base-64-encoded string in JSON. Use `Profile.PortraitExtension()` to determine the format.
+</ResponseField>
+
+---
+
+## PointsBreakdown
+
+`PointsBreakdown` summarises how a character's points are distributed. It is computed at runtime and is not stored in the file.
+
+<ResponseField name="Ancestry" type="fxp.Int">
+  Points spent on the ancestry (racial package) traits.
+</ResponseField>
+
+<ResponseField name="Attributes" type="fxp.Int">
+  Points invested in primary and secondary attributes.
+</ResponseField>
+
+<ResponseField name="Advantages" type="fxp.Int">
+  Total positive-cost traits (advantages).
+</ResponseField>
+
+<ResponseField name="Disadvantages" type="fxp.Int">
+  Total cost of negative-point traits (disadvantages). Stored as a negative number.
+</ResponseField>
+
+<ResponseField name="Quirks" type="fxp.Int">
+  Points from quirks (−1-point disadvantages). Stored as a negative number.
+</ResponseField>
+
+<ResponseField name="Skills" type="fxp.Int">
+  Points invested in skills and techniques.
+</ResponseField>
+
+<ResponseField name="Spells" type="fxp.Int">
+  Points invested in spells.
+</ResponseField>
+
+The `Total()` method returns `Ancestry + Attributes + Advantages + Disadvantages + Quirks + Skills + Spells`.
+
+---
+
+## Runtime-only fields
+
+The `Entity` struct embeds `EntityData` and adds several computed values that are **never written to disk**:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `LiftingStrengthBonus` | `fxp.Int` | Bonus applied to lifting ST calculations |
+| `StrikingStrengthBonus` | `fxp.Int` | Bonus applied to striking ST damage |
+| `ThrowingStrengthBonus` | `fxp.Int` | Bonus applied to throwing ST |
+| `DodgeBonus` | `fxp.Int` | Flat bonus added to all Dodge scores |
+| `ParryBonus` | `fxp.Int` | Flat bonus added to all Parry scores |
+| `BlockBonus` | `fxp.Int` | Flat bonus added to all Block scores |
+
+---
+
+## JSON example
+
+```json
+{
+  "version": 5,
+  "id": "Bcts0001AbCdEfGh",
+  "total_points": 100,
+  "points_record": [
+    { "when": "2025-01-01T00:00:00Z", "points": 100, "reason": "Initial points" }
+  ],
+  "profile": {
+    "name": "Aldric",
+    "player_name": "Jane",
+    "age": "28",
+    "gender": "Male",
+    "height": "5'11\"",
+    "weight": "172 lb",
+    "SM": 0,
+    "tech_level": "3"
+  },
+  "attributes": {},
+  "traits": [],
+  "skills": [],
+  "spells": [],
+  "equipment": [],
+  "other_equipment": [],
+  "notes": [],
+  "created_date": "2025-01-01T00:00:00Z",
+  "modified_date": "2025-01-01T00:00:00Z"
+}
+```

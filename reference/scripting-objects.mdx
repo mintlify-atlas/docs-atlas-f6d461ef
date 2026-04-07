@@ -1,0 +1,466 @@
+---
+title: "Scripting objects reference"
+description: "Complete property and method reference for every object available in GCS scripts."
+---
+
+This page documents every property and method exposed by GCS scripting objects. All objects are **read-only** —
+setting a property has no effect. Property values are lazy: they are only computed the first time your script reads
+them.
+
+For an explanation of how scripts work and how `self` is set, see the [Scripting overview](/reference/scripting-overview).
+
+---
+
+## Entity
+
+The `entity` global and the `self` variable in entity-level contexts. Represents a loaded character sheet.
+Also accessible through `$<attrID>` shortcuts for each attribute (e.g., `$st`, `$dx`).
+
+<AccordionGroup>
+  <Accordion title="Profile properties">
+    | Property | Type | Description |
+    |---|---|---|
+    | `exists` | `boolean` | `false` when no entity is loaded (safe null-check). |
+    | `playerName` | `string` | Player's name from the sheet profile. |
+    | `name` | `string` | Character name. |
+    | `title` | `string` | Character title. |
+    | `organization` | `string` | Organization or group. |
+    | `religion` | `string` | Religion. |
+    | `techLevel` | `string` | Character's tech level. |
+    | `gender` | `string` | Gender. |
+    | `age` | `string` | Age. |
+    | `birthday` | `string` | Birthday. |
+    | `eyes` | `string` | Eye color/description. |
+    | `hair` | `string` | Hair color/description. |
+    | `skin` | `string` | Skin description. |
+    | `handedness` | `string` | Handedness. |
+    | `heightInInches` | `number` | Height in inches (fractional). |
+    | `weightInPounds` | `number` | Weight in pounds (fractional). |
+    | `displayHeightUnits` | `string` | The unit key used to display height (e.g., `"ft_in"`). |
+    | `displayWeightUnits` | `string` | The unit key used to display weight (e.g., `"lb"`). |
+    | `sizeModifier` | `number` | Adjusted size modifier. |
+  </Accordion>
+
+  <Accordion title="Strength variants">
+    | Property | Type | Description |
+    |---|---|---|
+    | `liftingStrength` | `number` | Lifting ST (integer). |
+    | `strikingStrength` | `number` | Striking ST (integer). |
+    | `throwingStrength` | `number` | Throwing ST (integer). |
+  </Accordion>
+
+  <Accordion title="Settings flags">
+    | Property | Type | Description |
+    |---|---|---|
+    | `extraDiceFromModifiers` | `boolean` | Whether the "Modifying Dice + Adds" option is active. |
+  </Accordion>
+
+  <Accordion title="Collections">
+    | Property | Type | Description |
+    |---|---|---|
+    | `attributes` | `Attribute[]` | All non-separator attributes on the sheet. |
+    | `encumbrance` | `Encumbrance` | Encumbrance summary object. |
+    | `equipment` | `Equipment[]` | Carried equipment items with quantity > 0. |
+    | `skills` | `Skill[]` | All skills (top-level). |
+    | `spells` | `Spell[]` | All spells (top-level). |
+    | `traits` | `Trait[]` | Enabled traits (top-level). |
+    | `weapons` | `Weapon[]` | All melee and ranged weapons from all sources. |
+  </Accordion>
+
+  <Accordion title="Lookup methods">
+    | Method | Returns | Description |
+    |---|---|---|
+    | `attribute(id)` | `Attribute \| undefined` | Find an attribute by its ID string (e.g., `"st"`). |
+    | `currentEncumbrance(forSkills, returnMoveFactor)` | `number` | Encumbrance level (0–4) or, when `returnMoveFactor` is `true`, the corresponding move multiplier (1.0, 0.8, 0.6, …). |
+    | `findEquipment(name, tag)` | `Equipment[]` | Find carried equipment matching name and/or tag. Pass `""` to skip a filter. |
+    | `findSkills(name, specialization, tag)` | `Skill[]` | Find skills matching name, specialization, and/or tag. |
+    | `findSpells(name, tag)` | `Spell[]` | Find spells matching name and/or tag. |
+    | `findTraits(name, tag)` | `Trait[]` | Find enabled traits matching name and/or tag. |
+    | `findWeapons(melee, name, usage)` | `Weapon[]` | Find weapons. `melee` is boolean; pass `""` to skip name/usage filters. |
+    | `hasTrait(name)` | `boolean` | Returns `true` if the character has any enabled trait with the given name (case-insensitive). |
+    | `skillLevel(name, specialization, relative)` | `number` | Skill level (absolute or relative) of the first matching skill. Returns `0` if not found or when called recursively. |
+    | `traitLevel(name)` | `number` | Sum of current levels for all leveled traits matching the name. Returns `−1` if no leveled trait was found. |
+    | `weaponDamage(name, usage)` | `string \| undefined` | Resolved damage string for the named weapon+usage combination. |
+  </Accordion>
+
+  <Accordion title="Random helpers">
+    | Method | Returns | Description |
+    |---|---|---|
+    | `randomHeightInInches(st)` | `number` | Random height in inches based on ST, using the GURPS B18 chart. |
+    | `randomWeightInPounds(st, shift)` | `number` | Random weight in pounds based on ST and an optional weight-category shift. Automatically accounts for Skinny / Overweight / Fat / Very Fat traits. |
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Attribute
+
+Represents one attribute (primary, secondary, or pool) from the entity's attribute list.
+Each attribute is also injected as a global `$<attrID>` variable (e.g., `$st`, `$iq`).
+
+| Property | Type | Description |
+|---|---|---|
+| `id` | `string` | The attribute's ID (e.g., `"st"`, `"iq"`). |
+| `kind` | `string` | `"primary"`, `"secondary"`, or `"pool"`. |
+| `name` | `string` | Short name of the attribute definition. |
+| `fullName` | `string` | Full resolved name of the attribute definition. |
+| `maximum` | `number` | The attribute's maximum (or base) value. |
+| `current` | `number` | Current value (for pool attributes, the remaining value). |
+| `isDecimal` | `boolean` | Whether the attribute allows decimal values. |
+| `valueOf()` | `number` | Returns the same value as `maximum`; allows the object to be used directly in arithmetic. |
+
+```javascript
+// Both of these produce the same result:
+$st.maximum
+$st.valueOf()
+```
+
+---
+
+## Trait
+
+Represents an advantage, disadvantage, perk, quirk, or trait container. Only **enabled** traits appear in
+`entity.traits`.
+
+<AccordionGroup>
+  <Accordion title="Common properties (all traits)">
+    | Property | Type | Description |
+    |---|---|---|
+    | `id` | `string` | Unique TID for this trait. |
+    | `parentID` | `string \| undefined` | TID of the parent container, if any. |
+    | `parent` | `Trait \| undefined` | The parent container object, if any. |
+    | `name` | `string` | Name with any name-replacement substitutions applied. |
+    | `notes` | `string` | Secondary text (notes) with all display options enabled. |
+    | `tags` | `string[]` | Tag list. |
+    | `container` | `boolean` | `true` if this trait is a container. |
+  </Accordion>
+
+  <Accordion title="Container-only properties">
+    Available when `container` is `true`.
+
+    | Property | Type | Description |
+    |---|---|---|
+    | `kind` | `string` | Container type key (spaces replace underscores, e.g., `"group"`, `"meta trait"`). |
+    | `children` | `Trait[]` | Enabled child traits. |
+    | `find(name, tag)` | `Trait[]` | Search children by name and/or tag. |
+  </Accordion>
+
+  <Accordion title="Leveled trait properties">
+    Available when `container` is `false` and the trait supports levels (`canLevel`).
+
+    | Property | Type | Description |
+    |---|---|---|
+    | `level` | `number` | Current level (fractional). |
+    | `weapons` | `Weapon[]` | Weapons attached to this trait. |
+    | `findWeapons(melee, name, usage)` | `Weapon[]` | Filter attached weapons. |
+  </Accordion>
+
+  <Accordion title="Modifier methods (all non-container traits)">
+    | Method | Returns | Description |
+    |---|---|---|
+    | `findActiveModifier(name)` | `TraitModifier \| null` | Find the first active modifier with the given name. Returns `null` if not found. |
+    | `activeModifiers` | `TraitModifier[]` | All active modifiers on this trait. |
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Skill
+
+Represents a skill or technique entry. Containers (skill groups) and leaf skills share a base set of properties,
+with leaf skills exposing additional level data.
+
+<AccordionGroup>
+  <Accordion title="Common properties (all skills)">
+    | Property | Type | Description |
+    |---|---|---|
+    | `id` | `string` | Unique TID. |
+    | `parentID` | `string \| undefined` | TID of the parent container. |
+    | `parent` | `Skill \| undefined` | Parent container object. |
+    | `name` | `string` | Name with replacements. |
+    | `notes` | `string` | Secondary text. |
+    | `tags` | `string[]` | Tag list. |
+    | `container` | `boolean` | `true` for skill containers. |
+  </Accordion>
+
+  <Accordion title="Container-only properties">
+    | Property | Type | Description |
+    |---|---|---|
+    | `children` | `Skill[]` | Enabled child skills. |
+    | `find(name, specialization, tag)` | `Skill[]` | Search children by name, specialization, and/or tag. |
+  </Accordion>
+
+  <Accordion title="Leaf skill properties">
+    Available when `container` is `false`.
+
+    | Property | Type | Description |
+    |---|---|---|
+    | `specialization` | `string` | Specialization with replacements. |
+    | `techLevel` | `string` | Tech level string, or `""` if not tech-leveled. |
+    | `kind` | `string` | `"skill"` or `"technique"`. |
+    | `attribute` | `string` | The controlling attribute ID (e.g., `"dx"`). |
+    | `difficulty` | `string` | Difficulty key (e.g., `"e"`, `"a"`, `"h"`). |
+    | `points` | `number` | Adjusted point cost (integer). |
+    | `level` | `number` | Absolute skill level (integer). Computed on access; circular calls return `0`. |
+    | `relativeLevel` | `number` | Relative skill level (integer). |
+    | `weapons` | `Weapon[]` | Weapons attached to this skill. |
+    | `findWeapons(melee, name, usage)` | `Weapon[]` | Filter attached weapons. |
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Spell
+
+Represents a spell or ritual magic spell entry. Structure mirrors [Skill](#skill) with additional spell-specific fields.
+
+<AccordionGroup>
+  <Accordion title="Common properties (all spells)">
+    | Property | Type | Description |
+    |---|---|---|
+    | `id` | `string` | Unique TID. |
+    | `parentID` | `string \| undefined` | TID of the parent container. |
+    | `parent` | `Spell \| undefined` | Parent container object. |
+    | `name` | `string` | Name with replacements. |
+    | `notes` | `string` | Secondary text. |
+    | `tags` | `string[]` | Tag list. |
+    | `container` | `boolean` | `true` for spell containers. |
+  </Accordion>
+
+  <Accordion title="Container-only properties">
+    | Property | Type | Description |
+    |---|---|---|
+    | `children` | `Spell[]` | Child spells. |
+    | `find(name, tag)` | `Spell[]` | Search children by name and/or tag. |
+  </Accordion>
+
+  <Accordion title="Leaf spell properties">
+    Available when `container` is `false`.
+
+    | Property | Type | Description |
+    |---|---|---|
+    | `techLevel` | `string \| undefined` | Tech level string, or `undefined` if not tech-leveled. |
+    | `kind` | `string` | `"spell"` or `"ritual magic spell"`. |
+    | `attribute` | `string` | Controlling attribute ID. |
+    | `difficulty` | `string` | Difficulty string. |
+    | `points` | `number` | Adjusted point cost (integer). |
+    | `college` | `string[]` | College list. |
+    | `powerSource` | `string` | Power source with replacements. |
+    | `spellClass` | `string` | Spell class with replacements. |
+    | `resist` | `string` | Resistance with replacements. |
+    | `castingCost` | `string` | Casting cost with replacements. |
+    | `maintenanceCost` | `string` | Maintenance cost with replacements. |
+    | `castingTime` | `string` | Casting time with replacements. |
+    | `duration` | `string` | Duration with replacements. |
+    | `item` | `string` | Item description with replacements (ritual magic). |
+    | `ritualSkillName` | `string` | Ritual skill name with replacements. |
+    | `prereqCount` | `number` | Number of prerequisite spells required. |
+    | `level` | `number` | Absolute spell level (integer). |
+    | `relativeLevel` | `number` | Relative spell level (integer). |
+    | `weapons` | `Weapon[]` | Weapons attached to this spell. |
+    | `findWeapons(melee, name, usage)` | `Weapon[]` | Filter attached weapons. |
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Equipment
+
+Represents a carried equipment item or equipment container. Only items with `quantity > 0` appear in
+`entity.equipment`.
+
+| Property | Type | Description |
+|---|---|---|
+| `id` | `string` | Unique TID. |
+| `parentID` | `string \| undefined` | TID of the parent container. |
+| `parent` | `Equipment \| undefined` | Parent container object. |
+| `name` | `string` | Name with replacements. |
+| `techLevel` | `string` | Tech level. |
+| `legalityClass` | `string` | Legality class. |
+| `quantity` | `number` | Quantity (fractional). |
+| `level` | `number` | Item quality level (fractional). |
+| `uses` | `number` | Current uses remaining. |
+| `maxUses` | `number` | Maximum uses. |
+| `value` | `number` | Adjusted per-item value in the default currency. |
+| `extendedValue` | `number` | Total extended value (value × quantity). |
+| `weight` | `number` | Adjusted weight in pounds per item. |
+| `extendedWeight` | `number` | Total extended weight in pounds (weight × quantity). |
+| `weightIgnoredForSkills` | `boolean` | `true` when this item's weight is excluded from encumbrance for skill checks. |
+| `equipped` | `boolean` | `true` when the item is equipped (not merely carried). |
+| `container` | `boolean` | `true` when this is a container item. |
+| `notes` | `string` | Secondary text. |
+| `tags` | `string[]` | Tag list. |
+| `find(name, tag)` | `Equipment[]` | Search child items by name and/or tag. Only items with quantity > 0 are returned. |
+| `children` | `Equipment[]` | Child items with quantity > 0. Available on containers. |
+| `weapons` | `Weapon[]` | Weapons attached to this item. |
+| `findWeapons(melee, name, usage)` | `Weapon[]` | Filter attached weapons. |
+| `findActiveModifier(name)` | `EquipmentModifier \| null` | Find the first active modifier with the given name. |
+| `activeModifiers` | `EquipmentModifier[]` | All active modifiers on this item. |
+
+---
+
+## Weapon
+
+Represents a melee or ranged weapon. Properties differ depending on the weapon kind.
+
+<AccordionGroup>
+  <Accordion title="Common properties (all weapons)">
+    | Property | Type | Description |
+    |---|---|---|
+    | `id` | `string` | Unique TID. |
+    | `attachedTo` | `Equipment \| Trait \| undefined` | The equipment item or trait this weapon belongs to. |
+    | `name` | `string` | Weapon name (the owning item's name). |
+    | `notes` | `string` | Weapon notes. |
+    | `usage` | `string` | Usage description with replacements (e.g., `"Thrust"`, `"Swing"`). |
+    | `usageNotes` | `string` | Resolved usage notes. |
+    | `level` | `number` | Effective skill level used by this weapon (integer, minimum 0). |
+    | `damage` | `string` | Resolved damage string (e.g., `"2d+1 cut"`). |
+    | `strength` | `string` | Minimum strength requirement string. |
+    | `hidden` | `boolean` | `true` when the weapon is hidden from the sheet display. |
+    | `kind` | `string` | `"melee"` or `"ranged"`. |
+  </Accordion>
+
+  <Accordion title="Melee-only properties">
+    Available when `kind` is `"melee"`.
+
+    | Property | Type | Description |
+    |---|---|---|
+    | `block` | `string` | Resolved Block value string. |
+    | `parry` | `string` | Resolved Parry value string. |
+    | `reach` | `string` | Resolved Reach string. |
+  </Accordion>
+
+  <Accordion title="Ranged-only properties">
+    Available when `kind` is `"ranged"`.
+
+    | Property | Type | Description |
+    |---|---|---|
+    | `accuracy` | `string` | Resolved Acc string. |
+    | `bulk` | `string` | Resolved Bulk string. |
+    | `range` | `string` | Resolved Range string. |
+    | `rateOfFire` | `string` | Resolved RoF string. |
+    | `recoil` | `string` | Resolved Rcl string. |
+    | `shots` | `string` | Resolved Shots string. |
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## TraitModifier
+
+Represents an active modifier on a trait.
+
+| Property | Type | Description |
+|---|---|---|
+| `id` | `string` | Unique TID. |
+| `attachedTo` | `Trait \| undefined` | The parent trait. |
+| `name` | `string` | Modifier name with replacements. |
+| `level` | `number \| undefined` | Current level for leveled modifiers; `undefined` for non-leveled. |
+| `tags` | `string[]` | Tag list. |
+| `notes` | `string` | Secondary text. |
+
+---
+
+## EquipmentModifier
+
+Represents an active modifier on an equipment item.
+
+| Property | Type | Description |
+|---|---|---|
+| `id` | `string` | Unique TID. |
+| `attachedTo` | `Equipment \| undefined` | The parent equipment item. |
+| `name` | `string` | Modifier name with replacements. |
+| `techLevel` | `string` | Tech level. |
+| `tags` | `string[]` | Tag list. |
+| `notes` | `string` | Secondary text. |
+
+---
+
+## Encumbrance
+
+Accessed via `entity.encumbrance`. Summarizes the character's current encumbrance state.
+
+| Property | Type | Description |
+|---|---|---|
+| `levelName` | `string` | Human-readable level name (e.g., `"none"`, `"light"`, `"medium"`, `"heavy"`, `"extra heavy"`). |
+| `level` | `number` | Numeric encumbrance level: 0 (none) through 4 (extra heavy). |
+| `levelForSkills` | `number` | Encumbrance level as it applies to skill penalties. |
+| `moveFactor` | `number` | Movement multiplier: 1.0 at no encumbrance, decreasing by 0.2 per level. |
+| `weightCarried` | `number` | Total weight carried in pounds. |
+| `maximumCarry` | `number` | Maximum carry weight at Extra Heavy encumbrance in pounds. |
+| `basicLift` | `number` | Basic Lift in pounds. |
+| `oneHandedLift` | `number` | One-Handed Lift in pounds. |
+| `twoHandedLift` | `number` | Two-Handed Lift in pounds. |
+| `shoveAndKnockOver` | `number` | Shove and Knock Over weight in pounds. |
+| `runningShoveAndKnockOver` | `number` | Running Shove and Knock Over weight in pounds. |
+| `carryOnBack` | `number` | Carry On Back weight in pounds. |
+| `shiftSlightly` | `number` | Shift Slightly weight in pounds. |
+
+---
+
+## console
+
+The `console` global provides logging to the GCS structured log. All messages are routed through the application's
+`slog` logger.
+
+| Method | Description |
+|---|---|
+| `console.log(...args)` | Logs at the `INFO` level. Arguments are joined with spaces. |
+| `console.error(...args)` | Logs at the `ERROR` level. Arguments are joined with spaces. |
+
+<Note>
+`console.warn` is not defined. Use `console.log` for informational output and `console.error` for errors.
+</Note>
+
+```javascript
+console.log("self name:", self.name);
+console.error("unexpected value:", $st.maximum);
+```
+
+---
+
+## dice
+
+The `dice` global provides utilities for parsing and manipulating GURPS dice expressions (e.g., `"3d6+2"`,
+`"2d-1x2"`).
+
+| Method | Returns | Description |
+|---|---|---|
+| `dice.from(count, sides, modifier, multiplier)` | `string` | Build a dice expression string. `count` may be omitted (shorthand for `sides`-only). All parameters are optional except `sides`. |
+| `dice.add(left, right)` | `string` | Add two dice expressions. Both must have the same number of sides. |
+| `dice.subtract(left, right)` | `string` | Subtract `right` from `left`. Both must have the same number of sides. Count cannot go below 0. |
+| `dice.count(diceSpec)` | `number` | Extract the dice count from an expression. |
+| `dice.sides(diceSpec)` | `number` | Extract the number of sides from an expression. |
+| `dice.modifier(diceSpec)` | `number` | Extract the additive modifier from an expression. |
+| `dice.multiplier(diceSpec)` | `number` | Extract the multiplier from an expression. |
+| `dice.roll(diceSpec, extraDiceFromModifiers)` | `number` | Roll the given dice expression and return the integer result. Pass `entity.extraDiceFromModifiers` for the second argument to respect the sheet setting. |
+
+```javascript
+// Roll the character's thrust damage.
+const thrustDmg = entity.weaponDamage("Broadsword", "Thrust");
+dice.roll(thrustDmg, entity.extraDiceFromModifiers)
+```
+
+---
+
+## measure
+
+The `measure` global provides unit conversion and GURPS Size/Speed/Range Table (SSRT) helpers.
+
+| Method | Returns | Description |
+|---|---|---|
+| `measure.formatLength(inches, toUnits)` | `string` | Format a length given in inches into the specified unit string (e.g., `"ft_in"`, `"m"`). |
+| `measure.lengthToInches(value, fromUnits)` | `number` | Convert a length from the given units to inches. |
+| `measure.stringLengthToInches(str, defaultUnits)` | `number` | Parse a length string (e.g., `"6 ft"`) to inches. Returns `0` on parse error. |
+| `measure.formatWeight(pounds, toUnits)` | `string` | Format a weight given in pounds into the specified unit string (e.g., `"lb"`, `"kg"`). |
+| `measure.weightToPounds(value, fromUnits)` | `number` | Convert a weight from the given units to pounds. |
+| `measure.stringWeightToPounds(str, defaultUnits)` | `number` | Parse a weight string (e.g., `"10 kg"`) to pounds. Returns `0` on parse error. |
+| `measure.rangeModifier(yards)` | `number` | Returns the SSRT range penalty modifier for the given distance in yards. |
+| `measure.sizeModifier(yards)` | `number` | Returns the SSRT size modifier for the given size in yards. |
+| `measure.modifier(length, units, forSize)` | `number` | Compute an SSRT modifier. `forSize` determines sign convention. |
+| `measure.modifierToYards(ssrtValue)` | `number` | Convert an SSRT value back to a distance in yards. |
+
+```javascript
+// Display the character's height in the sheet's preferred units.
+measure.formatLength(entity.heightInInches, entity.displayHeightUnits)
+```
